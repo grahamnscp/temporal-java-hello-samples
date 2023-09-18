@@ -1,0 +1,7 @@
+# direnv .envrc
+
+export CLASSPATH="./target/dependency/*:./target/hellosamples-1.0.jar"
+
+export TEMPORAL_NAMESPACE="default"
+export TASK_QUEUE="Hello"
+
