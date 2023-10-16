@@ -10,7 +10,7 @@ export CLASSPATH="./target/dependency/*:./target/hellosamples-1.0.jar"
 ```
 
 ## Build
-Might need to tweek for java versions etc or use ide :)
+Might need to tweak for java versions etc or use ide :)
 ```
 mvn compile
 mvn verify
