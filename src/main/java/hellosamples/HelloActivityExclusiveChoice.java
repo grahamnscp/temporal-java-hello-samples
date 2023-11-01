@@ -22,6 +22,7 @@ package hellosamples;
 import io.temporal.activity.ActivityInterface;
 import io.temporal.activity.ActivityOptions;
 import io.temporal.client.WorkflowClient;
+import io.temporal.client.WorkflowClientOptions;
 import io.temporal.client.WorkflowOptions;
 import io.temporal.serviceclient.WorkflowServiceStubs;
 import io.temporal.worker.Worker;
@@ -34,7 +35,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Sample Temporal Workflow Definition demonstrating how to execute an Activity based on dynamic
+ * Sample Temporal Workflow Definition demonstrating how to execute an Activity
+ * based on dynamic
  * input.
  */
 public class HelloActivityExclusiveChoice {
@@ -74,7 +76,8 @@ public class HelloActivityExclusiveChoice {
   public interface PurchaseFruitsWorkflow {
 
     /**
-     * Define the workflow method. This method is executed when the workflow is started. The
+     * Define the workflow method. This method is executed when the workflow is
+     * started. The
      * workflow completes when the workflow method finishes execution.
      */
     @WorkflowMethod
@@ -82,7 +85,8 @@ public class HelloActivityExclusiveChoice {
   }
 
   /**
-   * Define the Activity Interface. Workflow methods can call activities during execution.
+   * Define the Activity Interface. Workflow methods can call activities during
+   * execution.
    * Annotating activity methods with @ActivityMethod is optional
    *
    * @see io.temporal.activity.ActivityInterface
@@ -101,21 +105,25 @@ public class HelloActivityExclusiveChoice {
     String orderOranges(int amount);
   }
 
-  // Define the workflow implementation. It implements our orderFruit workflow method
+  // Define the workflow implementation. It implements our orderFruit workflow
+  // method
   public static class PurchaseFruitsWorkflowImpl implements PurchaseFruitsWorkflow {
 
     /*
-     * Define the OrderActivities stub. Activity stubs implements activity interfaces and proxy
-     * calls to it to Temporal activity invocations. Since Temporal activities are reentrant, a
+     * Define the OrderActivities stub. Activity stubs implements activity
+     * interfaces and proxy
+     * calls to it to Temporal activity invocations. Since Temporal activities are
+     * reentrant, a
      * single activity stub can be used for multiple activity invocations.
      *
-     * <p>In the {@link ActivityOptions} definition the "setStartToCloseTimeout" option sets the
-     * maximum time of a single Activity execution attempt. For this example it is set to 2 seconds.
+     * <p>In the {@link ActivityOptions} definition the "setStartToCloseTimeout"
+     * option sets the
+     * maximum time of a single Activity execution attempt. For this example it is
+     * set to 2 seconds.
      */
-    private final OrderFruitsActivities activities =
-        Workflow.newActivityStub(
-            OrderFruitsActivities.class,
-            ActivityOptions.newBuilder().setStartToCloseTimeout(Duration.ofSeconds(2)).build());
+    private final OrderFruitsActivities activities = Workflow.newActivityStub(
+        OrderFruitsActivities.class,
+        ActivityOptions.newBuilder().setStartToCloseTimeout(Duration.ofSeconds(2)).build());
 
     @Override
     public StringBuilder orderFruit(ShoppingList list) {
@@ -124,7 +132,8 @@ public class HelloActivityExclusiveChoice {
       list.getList()
           .forEach(
               (fruit, amount) -> {
-                // You can use a basic switch to call an activity method based on the workflow input
+                // You can use a basic switch to call an activity method based on the workflow
+                // input
                 switch (fruit) {
                   case APPLE:
                     shoppingResults.append(activities.orderApples(amount));
@@ -148,7 +157,8 @@ public class HelloActivityExclusiveChoice {
   }
 
   /**
-   * Implementation of our workflow activity interface. It overwrites our defined activity methods.
+   * Implementation of our workflow activity interface. It overwrites our defined
+   * activity methods.
    */
   static class OrderFruitsActivitiesImpl implements OrderFruitsActivities {
     @Override
@@ -173,27 +183,35 @@ public class HelloActivityExclusiveChoice {
   }
 
   /**
-   * With our Workflow and Activities defined, we can now start execution. The main method is our
+   * With our Workflow and Activities defined, we can now start execution. The
+   * main method is our
    * workflow starter.
    */
   public static void main(String[] args) {
 
+    String namespace = AppConfig.TEMPORAL_NAMESPACE;
+
     /* Temporal client connection */
     WorkflowServiceStubs service = WorkflowServiceStubs.newLocalServiceStubs();
-    WorkflowClient client = WorkflowClient.newInstance(service);
+    WorkflowClient client = WorkflowClient.newInstance(service,
+        WorkflowClientOptions.newBuilder()
+            .setNamespace(namespace)
+            .build());
     WorkerFactory factory = WorkerFactory.newInstance(client);
 
     /* Temporal Task Queue */
     Worker worker = factory.newWorker(AppConfig.TASK_QUEUE);
 
     /*
-     * Register our workflow implementation with the worker. Since workflows are stateful in nature,
+     * Register our workflow implementation with the worker. Since workflows are
+     * stateful in nature,
      * we need to register our workflow type.
      */
     worker.registerWorkflowImplementationTypes(PurchaseFruitsWorkflowImpl.class);
 
     /*
-     * Register our Activity Types with the Worker. Since Activities are stateless and thread-safe,
+     * Register our Activity Types with the Worker. Since Activities are stateless
+     * and thread-safe,
      * the Activity Type is a shared instance.
      */
     worker.registerActivitiesImplementations(new OrderFruitsActivitiesImpl());
@@ -201,15 +219,13 @@ public class HelloActivityExclusiveChoice {
     // Start all the workers registered for a specific task queue.
     factory.start();
 
-
     // Create our workflow client stub. It is used to start our workflow execution.
-    PurchaseFruitsWorkflow workflow =
-        client.newWorkflowStub(
-            PurchaseFruitsWorkflow.class,
-            WorkflowOptions.newBuilder()
-                .setWorkflowId(WORKFLOW_ID)
-                .setTaskQueue(AppConfig.TASK_QUEUE)
-                .build());
+    PurchaseFruitsWorkflow workflow = client.newWorkflowStub(
+        PurchaseFruitsWorkflow.class,
+        WorkflowOptions.newBuilder()
+            .setWorkflowId(WORKFLOW_ID)
+            .setTaskQueue(AppConfig.TASK_QUEUE)
+            .build());
 
     // Let's build our example shopping list
     ShoppingList shoppingList = new ShoppingList();

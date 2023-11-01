@@ -23,6 +23,7 @@ import io.temporal.activity.Activity;
 import io.temporal.activity.ActivityOptions;
 import io.temporal.activity.DynamicActivity;
 import io.temporal.client.WorkflowClient;
+import io.temporal.client.WorkflowClientOptions;
 import io.temporal.client.WorkflowOptions;
 import io.temporal.client.WorkflowStub;
 import io.temporal.common.converter.EncodedValues;
@@ -51,13 +52,11 @@ public class HelloDynamic {
 
       // Register dynamic signal handler
       Workflow.registerListener(
-          (DynamicSignalHandler)
-              (signalName, encodedArgs) -> name = encodedArgs.get(0, String.class));
+          (DynamicSignalHandler) (signalName, encodedArgs) -> name = encodedArgs.get(0, String.class));
 
       // Define activity options and get ActivityStub
-      ActivityStub activity =
-          Workflow.newUntypedActivityStub(
-              ActivityOptions.newBuilder().setStartToCloseTimeout(Duration.ofSeconds(10)).build());
+      ActivityStub activity = Workflow.newUntypedActivityStub(
+          ActivityOptions.newBuilder().setStartToCloseTimeout(Duration.ofSeconds(10)).build());
       // Execute the dynamic Activity. Note that the provided Activity name is not
       // explicitly registered with the Worker
       String greetingResult = activity.execute("DynamicACT", String.class, greeting, name, type);
@@ -83,52 +82,62 @@ public class HelloDynamic {
   }
 
   /**
-   * With our dynamic Workflow and Activities defined, we can now start execution. The main method
+   * With our dynamic Workflow and Activities defined, we can now start execution.
+   * The main method
    * starts the worker and then the workflow.
    */
   public static void main(String[] arg) {
 
+    String namespace = AppConfig.TEMPORAL_NAMESPACE;
+
     /* Temporal client connection */
     WorkflowServiceStubs service = WorkflowServiceStubs.newLocalServiceStubs();
-    WorkflowClient client = WorkflowClient.newInstance(service);
+    WorkflowClient client = WorkflowClient.newInstance(service,
+        WorkflowClientOptions.newBuilder()
+            .setNamespace(namespace)
+            .build());
     WorkerFactory factory = WorkerFactory.newInstance(client);
 
     /* Temporal Task Queue */
     Worker worker = factory.newWorker(AppConfig.TASK_QUEUE);
 
     /*
-     * Register our dynamic workflow implementation with the worker. Workflow implementations must
+     * Register our dynamic workflow implementation with the worker. Workflow
+     * implementations must
      * be known to the worker at runtime in order to dispatch workflow tasks.
      */
     worker.registerWorkflowImplementationTypes(DynamicGreetingWorkflowImpl.class);
 
     /*
-     * Register our dynamic workflow activity implementation with the worker. Since workflow
-     * activities are stateless and thread-safe, we need to register a shared instance.
+     * Register our dynamic workflow activity implementation with the worker. Since
+     * workflow
+     * activities are stateless and thread-safe, we need to register a shared
+     * instance.
      */
     worker.registerActivitiesImplementations(new DynamicGreetingActivityImpl());
 
     /*
-     * Start all the Workers that are in this process. The Workers will then start polling for
+     * Start all the Workers that are in this process. The Workers will then start
+     * polling for
      * Workflow Tasks and Activity Tasks.
      */
     factory.start();
 
-
     /*
-     * Create the workflow stub Note that the Workflow type is not explicitly registered with the
+     * Create the workflow stub Note that the Workflow type is not explicitly
+     * registered with the
      * Worker
      */
-    WorkflowOptions workflowOptions =
-        WorkflowOptions.newBuilder()
-          .setTaskQueue(AppConfig.TASK_QUEUE)
-          .setWorkflowId(WORKFLOW_ID)
-          .build();
+    WorkflowOptions workflowOptions = WorkflowOptions.newBuilder()
+        .setTaskQueue(AppConfig.TASK_QUEUE)
+        .setWorkflowId(WORKFLOW_ID)
+        .build();
 
     WorkflowStub workflow = client.newUntypedWorkflowStub("DynamicWF", workflowOptions);
 
-    // Start workflow execution and signal right after Pass in the workflow args and signal args
-    workflow.signalWithStart("greetingSignal", new Object[] {"John"}, new Object[] {"Hello"});
+    // Start workflow execution and signal right after Pass in the workflow args and
+    // signal args
+    workflow.signalWithStart("greetingSignal", new Object[] { "John" }, new Object[] { "Hello" });
 
     // Wait for workflow to finish getting the results
     String result = workflow.getResult(String.class);

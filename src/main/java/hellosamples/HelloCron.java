@@ -24,6 +24,7 @@ import io.temporal.activity.ActivityInterface;
 import io.temporal.activity.ActivityOptions;
 import io.temporal.api.common.v1.WorkflowExecution;
 import io.temporal.client.WorkflowClient;
+import io.temporal.client.WorkflowClientOptions;
 import io.temporal.client.WorkflowExecutionAlreadyStarted;
 import io.temporal.client.WorkflowOptions;
 import io.temporal.serviceclient.WorkflowServiceStubs;
@@ -35,9 +36,12 @@ import io.temporal.workflow.WorkflowMethod;
 import java.time.Duration;
 
 /**
- * Sample Temporal workflow that demonstrates periodic workflow execution using a cron. Note that
- * the periodic execution is based on a fixed delay (provided by the cron definition). To learn
- * about periodic execution with a dynamic delay checkout the {@link HelloPeriodic} example.
+ * Sample Temporal workflow that demonstrates periodic workflow execution using
+ * a cron. Note that
+ * the periodic execution is based on a fixed delay (provided by the cron
+ * definition). To learn
+ * about periodic execution with a dynamic delay checkout the
+ * {@link HelloPeriodic} example.
  */
 public class HelloCron {
 
@@ -45,10 +49,14 @@ public class HelloCron {
   static final String WORKFLOW_ID = "HelloCronWorkflow";
 
   /**
-   * The Workflow Definition's Interface must contain one method annotated with @WorkflowMethod.
+   * The Workflow Definition's Interface must contain one method annotated
+   * with @WorkflowMethod.
    *
-   * <p>Workflow Definitions should not contain any heavyweight computations, non-deterministic
-   * code, network calls, database operations, etc. Those things should be handled by the
+   * <p>
+   * Workflow Definitions should not contain any heavyweight computations,
+   * non-deterministic
+   * code, network calls, database operations, etc. Those things should be handled
+   * by the
    * Activities.
    *
    * @see io.temporal.workflow.WorkflowInterface
@@ -58,7 +66,8 @@ public class HelloCron {
   public interface GreetingWorkflow {
 
     /**
-     * This is the method that is executed when the Workflow Execution is started. The Workflow
+     * This is the method that is executed when the Workflow Execution is started.
+     * The Workflow
      * Execution completes when this method finishes execution.
      */
     @WorkflowMethod
@@ -66,11 +75,14 @@ public class HelloCron {
   }
 
   /**
-   * This is the Activity Definition's Interface. Activities are building blocks of any Temporal
-   * Workflow and contain any business logic that could perform long running computation, network
+   * This is the Activity Definition's Interface. Activities are building blocks
+   * of any Temporal
+   * Workflow and contain any business logic that could perform long running
+   * computation, network
    * calls, etc.
    *
-   * <p>Annotating Activity Definition methods with @ActivityMethod is optional.
+   * <p>
+   * Annotating Activity Definition methods with @ActivityMethod is optional.
    *
    * @see io.temporal.activity.ActivityInterface
    * @see io.temporal.activity.ActivityMethod
@@ -82,23 +94,29 @@ public class HelloCron {
     void greet(String greeting);
   }
 
-  // Define the workflow implementation which implements the greet workflow method.
+  // Define the workflow implementation which implements the greet workflow
+  // method.
   public static class GreetingWorkflowImpl implements GreetingWorkflow {
 
     /**
-     * Define the GreetingActivities stub. Activity stubs are proxies for activity invocations that
-     * are executed outside of the workflow thread on the activity worker, that can be on a
-     * different host. Temporal is going to dispatch the activity results back to the workflow and
+     * Define the GreetingActivities stub. Activity stubs are proxies for activity
+     * invocations that
+     * are executed outside of the workflow thread on the activity worker, that can
+     * be on a
+     * different host. Temporal is going to dispatch the activity results back to
+     * the workflow and
      * unblock the stub as soon as activity is completed on the activity worker.
      *
-     * <p>In the {@link ActivityOptions} definition the "setStartToCloseTimeout" option sets the
-     * maximum time of a single Activity execution attempt. For this example it is set to 10
+     * <p>
+     * In the {@link ActivityOptions} definition the "setStartToCloseTimeout" option
+     * sets the
+     * maximum time of a single Activity execution attempt. For this example it is
+     * set to 10
      * seconds.
      */
-    private final GreetingActivities activities =
-        Workflow.newActivityStub(
-            GreetingActivities.class,
-            ActivityOptions.newBuilder().setStartToCloseTimeout(Duration.ofSeconds(10)).build());
+    private final GreetingActivities activities = Workflow.newActivityStub(
+        GreetingActivities.class,
+        ActivityOptions.newBuilder().setStartToCloseTimeout(Duration.ofSeconds(10)).build());
 
     @Override
     public void greet(String name) {
@@ -107,7 +125,8 @@ public class HelloCron {
   }
 
   /**
-   * Implementation of the workflow activity interface. It overwrites the defined greet activity
+   * Implementation of the workflow activity interface. It overwrites the defined
+   * greet activity
    * method.
    */
   static class GreetingActivitiesImpl implements GreetingActivities {
@@ -119,14 +138,20 @@ public class HelloCron {
   }
 
   /**
-   * With the Workflow and Activities defined, we can now start execution. The main method starts
+   * With the Workflow and Activities defined, we can now start execution. The
+   * main method starts
    * the worker and then the workflow.
    */
   public static void main(String[] args) {
 
+    String namespace = AppConfig.TEMPORAL_NAMESPACE;
+
     /* Temporal client connection */
     WorkflowServiceStubs service = WorkflowServiceStubs.newLocalServiceStubs();
-    WorkflowClient client = WorkflowClient.newInstance(service);
+    WorkflowClient client = WorkflowClient.newInstance(service,
+        WorkflowClientOptions.newBuilder()
+            .setNamespace(namespace)
+            .build());
     WorkerFactory factory = WorkerFactory.newInstance(client);
 
     /* Temporal Task Queue */
@@ -140,7 +165,8 @@ public class HelloCron {
     worker.registerWorkflowImplementationTypes(GreetingWorkflowImpl.class);
 
     /*
-     * Register the workflow activity implementation with the worker. Since workflow activities are
+     * Register the workflow activity implementation with the worker. Since workflow
+     * activities are
      * stateless and thread-safe, we need to register a shared instance.
      */
     worker.registerActivitiesImplementations(new GreetingActivitiesImpl());
@@ -151,7 +177,6 @@ public class HelloCron {
      */
     factory.start();
 
-
     /*
      * Define our workflow options. Note that the cron definition is not part of the
      * core workflow definition. Workflow options allow you to execute the same
@@ -159,30 +184,36 @@ public class HelloCron {
      *
      * Here we use setCronSchedule to define a cron for our workflow execution.
      * The cron format is parsed by the https://github.com/robfig/cron" library.
-     * In addition to the standard "* * * * *" format Temporal also supports the "@every" as well as
-     * other cron definition extensions. For example you could define "@every 2s" to define a cron definition
+     * In addition to the standard "* * * * *" format Temporal also supports the
+     * "@every" as well as
+     * other cron definition extensions. For example you could define "@every 2s" to
+     * define a cron definition
      * which executes our workflow every two seconds.
      *
-     * The defined cron expression "* * * * *" means that our workflow should execute every minute.
+     * The defined cron expression "* * * * *" means that our workflow should
+     * execute every minute.
      *
-     * We also use setWorkflowExecutionTimeout to define the workflow execution total time (set to three minutes).
-     * After this time, our workflow execution ends (and our cron will stop executing as well).
+     * We also use setWorkflowExecutionTimeout to define the workflow execution
+     * total time (set to three minutes).
+     * After this time, our workflow execution ends (and our cron will stop
+     * executing as well).
      *
-     * The setWorkflowRunTimeout defines the amount of time after which a single workflow instance is terminated.
+     * The setWorkflowRunTimeout defines the amount of time after which a single
+     * workflow instance is terminated.
      *
      * So given all our settings in the WorkflowOptions we define the following:
      * "Execute our workflow once every minute for three minutes.
-     * Once a workflow instance is started, terminate it after one minute (if its still running)"
+     * Once a workflow instance is started, terminate it after one minute (if its
+     * still running)"
      *
      */
-    WorkflowOptions workflowOptions =
-        WorkflowOptions.newBuilder()
-            .setWorkflowId(WORKFLOW_ID)
-            .setTaskQueue(AppConfig.TASK_QUEUE)
-            .setCronSchedule("* * * * *")
-            .setWorkflowExecutionTimeout(Duration.ofMinutes(3))
-            .setWorkflowRunTimeout(Duration.ofMinutes(1))
-            .build();
+    WorkflowOptions workflowOptions = WorkflowOptions.newBuilder()
+        .setWorkflowId(WORKFLOW_ID)
+        .setTaskQueue(AppConfig.TASK_QUEUE)
+        .setCronSchedule("* * * * *")
+        .setWorkflowExecutionTimeout(Duration.ofMinutes(3))
+        .setWorkflowRunTimeout(Duration.ofMinutes(1))
+        .build();
 
     // Create the workflow client stub. It is used to start our workflow execution.
     GreetingWorkflow workflow = client.newWorkflowStub(GreetingWorkflow.class, workflowOptions);

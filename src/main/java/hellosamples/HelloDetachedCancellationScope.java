@@ -24,6 +24,7 @@ import io.temporal.activity.ActivityCancellationType;
 import io.temporal.activity.ActivityInterface;
 import io.temporal.activity.ActivityOptions;
 import io.temporal.client.WorkflowClient;
+import io.temporal.client.WorkflowClientOptions;
 import io.temporal.client.WorkflowFailedException;
 import io.temporal.client.WorkflowOptions;
 import io.temporal.client.WorkflowStub;
@@ -37,7 +38,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 /**
- * This sample Temporal Workflow Definition demonstrates how to run "cleanup" code when a Workflow
+ * This sample Temporal Workflow Definition demonstrates how to run "cleanup"
+ * code when a Workflow
  * Execution has been explicitly cancelled.
  */
 public class HelloDetachedCancellationScope {
@@ -46,10 +48,14 @@ public class HelloDetachedCancellationScope {
   static final String WORKFLOW_ID = "HelloDetachedCancellationWorkflow";
 
   /**
-   * The Workflow Definition's Interface must contain one method annotated with @WorkflowMethod.
+   * The Workflow Definition's Interface must contain one method annotated
+   * with @WorkflowMethod.
    *
-   * <p>Workflow Definitions should not contain any heavyweight computations, non-deterministic
-   * code, network calls, database operations, etc. Those things should be handled by the
+   * <p>
+   * Workflow Definitions should not contain any heavyweight computations,
+   * non-deterministic
+   * code, network calls, database operations, etc. Those things should be handled
+   * by the
    * Activities.
    *
    * @see io.temporal.workflow.WorkflowInterface
@@ -59,7 +65,8 @@ public class HelloDetachedCancellationScope {
   public interface GreetingWorkflow {
 
     /**
-     * This is the method that is executed when the Workflow Execution is started. The Workflow
+     * This is the method that is executed when the Workflow Execution is started.
+     * The Workflow
      * Execution completes when this method finishes execution.
      */
     @WorkflowMethod
@@ -71,11 +78,14 @@ public class HelloDetachedCancellationScope {
   }
 
   /**
-   * This is the Activity Definition's Interface. Activities are building blocks of any Temporal
-   * Workflow and contain any business logic that could perform long running computation, network
+   * This is the Activity Definition's Interface. Activities are building blocks
+   * of any Temporal
+   * Workflow and contain any business logic that could perform long running
+   * computation, network
    * calls, etc.
    *
-   * <p>Annotating Activity Definition methods with @ActivityMethod is optional.
+   * <p>
+   * Annotating Activity Definition methods with @ActivityMethod is optional.
    *
    * @see io.temporal.activity.ActivityInterface
    * @see io.temporal.activity.ActivityMethod
@@ -91,7 +101,8 @@ public class HelloDetachedCancellationScope {
   static class GreetingActivitiesImpl implements GreetingActivities {
     @Override
     public String sayHello(String name) {
-      // This simulates a long-running Activity Execution so we can cancel the Workflow Execution
+      // This simulates a long-running Activity Execution so we can cancel the
+      // Workflow Execution
       // before it completes.
       for (int i = 0; i < Integer.MAX_VALUE; i++) {
         try {
@@ -115,14 +126,13 @@ public class HelloDetachedCancellationScope {
   public static class GreetingWorkflowImpl implements GreetingWorkflow {
     private String greeting;
 
-    private final GreetingActivities activities =
-        Workflow.newActivityStub(
-            GreetingActivities.class,
-            ActivityOptions.newBuilder()
-                .setStartToCloseTimeout(Duration.ofSeconds(10))
-                .setCancellationType(ActivityCancellationType.WAIT_CANCELLATION_COMPLETED)
-                .setHeartbeatTimeout(Duration.ofSeconds(2))
-                .build());
+    private final GreetingActivities activities = Workflow.newActivityStub(
+        GreetingActivities.class,
+        ActivityOptions.newBuilder()
+            .setStartToCloseTimeout(Duration.ofSeconds(10))
+            .setCancellationType(ActivityCancellationType.WAIT_CANCELLATION_COMPLETED)
+            .setHeartbeatTimeout(Duration.ofSeconds(2))
+            .build());
 
     @Override
     public String getGreeting(String name) {
@@ -131,9 +141,10 @@ public class HelloDetachedCancellationScope {
         return greeting;
       } catch (ActivityFailure af) {
         // Create a CancellationScope that is not linked to a parent scope
-        // This can be used in the "cleanup" code after the Workflow Execution has been cancelled.
-        CancellationScope detached =
-            Workflow.newDetachedCancellationScope(() -> greeting = activities.sayGoodBye(name));
+        // This can be used in the "cleanup" code after the Workflow Execution has been
+        // cancelled.
+        CancellationScope detached = Workflow
+            .newDetachedCancellationScope(() -> greeting = activities.sayGoodBye(name));
         detached.run();
         throw af;
       }
@@ -147,41 +158,47 @@ public class HelloDetachedCancellationScope {
 
   public static void main(String[] args) throws InterruptedException {
 
+    String namespace = AppConfig.TEMPORAL_NAMESPACE;
+
     /* Temporal client connection */
     WorkflowServiceStubs service = WorkflowServiceStubs.newLocalServiceStubs();
-    WorkflowClient client = WorkflowClient.newInstance(service);
+    WorkflowClient client = WorkflowClient.newInstance(service,
+        WorkflowClientOptions.newBuilder()
+            .setNamespace(namespace)
+            .build());
     WorkerFactory factory = WorkerFactory.newInstance(client);
 
     /* Temporal Task Queue */
     Worker worker = factory.newWorker(AppConfig.TASK_QUEUE);
 
     /*
-     * Register our Workflow Types with the Worker. Workflow Types must be known to the Worker at
+     * Register our Workflow Types with the Worker. Workflow Types must be known to
+     * the Worker at
      * runtime.
      */
     worker.registerWorkflowImplementationTypes(GreetingWorkflowImpl.class);
 
     /*
-     * Register our Activity Types with the Worker. Since Activities are stateless and thread-safe,
+     * Register our Activity Types with the Worker. Since Activities are stateless
+     * and thread-safe,
      * the Activity Type is a shared instance.
      */
     worker.registerActivitiesImplementations(new GreetingActivitiesImpl());
 
     /*
-     * Start all the Workers that are in this process. The Workers will then start polling for
+     * Start all the Workers that are in this process. The Workers will then start
+     * polling for
      * Workflow Tasks and Activity Tasks.
      */
     factory.start();
 
-
     // Create the Workflow client stub in order to start our Workflow Execution.
-    GreetingWorkflow workflow =
-        client.newWorkflowStub(
-            GreetingWorkflow.class,
-            WorkflowOptions.newBuilder()
-                .setWorkflowId(WORKFLOW_ID)
-                .setTaskQueue(AppConfig.TASK_QUEUE)
-                .build());
+    GreetingWorkflow workflow = client.newWorkflowStub(
+        GreetingWorkflow.class,
+        WorkflowOptions.newBuilder()
+            .setWorkflowId(WORKFLOW_ID)
+            .setTaskQueue(AppConfig.TASK_QUEUE)
+            .build());
 
     WorkflowClient.start(workflow::getGreeting, "John");
 
@@ -197,10 +214,12 @@ public class HelloDetachedCancellationScope {
 
     try {
       // Wait for Workflow Execution results
-      // Because we cancelled the Workflow Execution we should get WorkflowFailedException
+      // Because we cancelled the Workflow Execution we should get
+      // WorkflowFailedException
       result = workflowStub.getResult(6, TimeUnit.SECONDS, String.class, String.class);
     } catch (TimeoutException | WorkflowFailedException e) {
-      // Query the Workflow Execution to get the result which was set by the detached cancellation
+      // Query the Workflow Execution to get the result which was set by the detached
+      // cancellation
       // scope run
       result = workflowStub.query("queryGreeting", String.class);
     }

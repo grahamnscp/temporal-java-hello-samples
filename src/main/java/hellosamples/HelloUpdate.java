@@ -22,6 +22,7 @@ package hellosamples;
 import com.google.common.base.Throwables;
 import io.temporal.activity.ActivityOptions;
 import io.temporal.client.WorkflowClient;
+import io.temporal.client.WorkflowClientOptions;
 import io.temporal.client.WorkflowOptions;
 import io.temporal.client.WorkflowStub;
 import io.temporal.client.WorkflowUpdateException;
@@ -40,13 +41,19 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Sample Temporal workflow that demonstrates how to use workflow update methods to update a
- * workflow execution from external sources. Workflow update is another way to interact with a
- * running workflow along with signals and queries. Workflow update combines aspects of signals and
- * queries. Like signals, workflow update can mutate workflow state. Like queries, workflow update
+ * Sample Temporal workflow that demonstrates how to use workflow update methods
+ * to update a
+ * workflow execution from external sources. Workflow update is another way to
+ * interact with a
+ * running workflow along with signals and queries. Workflow update combines
+ * aspects of signals and
+ * queries. Like signals, workflow update can mutate workflow state. Like
+ * queries, workflow update
  * can return a value.
  *
- * <p>Note: Make sure to set {@code frontend.enableUpdateWorkflowExecution=true} in your Temporal
+ * <p>
+ * Note: Make sure to set {@code frontend.enableUpdateWorkflowExecution=true} in
+ * your Temporal
  * config to enabled update.
  */
 public class HelloUpdate {
@@ -55,10 +62,14 @@ public class HelloUpdate {
   static final String WORKFLOW_ID = "HelloUpdateWorkflow";
 
   /**
-   * The Workflow Definition's Interface must contain one method annotated with @WorkflowMethod.
+   * The Workflow Definition's Interface must contain one method annotated
+   * with @WorkflowMethod.
    *
-   * <p>Workflow Definitions should not contain any heavyweight computations, non-deterministic
-   * code, network calls, database operations, etc. Those things should be handled by the
+   * <p>
+   * Workflow Definitions should not contain any heavyweight computations,
+   * non-deterministic
+   * code, network calls, database operations, etc. Those things should be handled
+   * by the
    * Activities.
    *
    * @see WorkflowInterface
@@ -67,35 +78,42 @@ public class HelloUpdate {
   @WorkflowInterface
   public interface GreetingWorkflow {
     /**
-     * This is the method that is executed when the Workflow Execution is started. The Workflow
+     * This is the method that is executed when the Workflow Execution is started.
+     * The Workflow
      * Execution completes when this method finishes execution.
      */
     @WorkflowMethod
     List<String> getGreetings();
 
     /*
-     * Define the workflow addGreeting update method. This method is executed when the workflow
+     * Define the workflow addGreeting update method. This method is executed when
+     * the workflow
      * receives an update request.
      */
     @UpdateMethod
     int addGreeting(String name);
 
     /*
-     * Define an optional workflow update validator. The validator must take the same parameters as the update handle.
+     * Define an optional workflow update validator. The validator must take the
+     * same parameters as the update handle.
      * The validator is run before the update handle.
-     * If the validator fails by throwing any exception the update request will be rejected and the handle will not run.
-     * If the validator passes the update will be considered accepted and the handler will run.
+     * If the validator fails by throwing any exception the update request will be
+     * rejected and the handle will not run.
+     * If the validator passes the update will be considered accepted and the
+     * handler will run.
      */
     @UpdateValidatorMethod(updateName = "addGreeting")
     void addGreetingValidator(String name);
 
-    // Define the workflow exit signal method. This method is executed when the workflow receives a
+    // Define the workflow exit signal method. This method is executed when the
+    // workflow receives a
     // signal.
     @SignalMethod
     void exit();
   }
 
-  // Define the workflow implementation which implements the getGreetings workflow method.
+  // Define the workflow implementation which implements the getGreetings workflow
+  // method.
   public static class GreetingWorkflowImpl implements GreetingWorkflow {
 
     // messageQueue holds up to 10 messages (received from updates)
@@ -103,10 +121,9 @@ public class HelloUpdate {
     private final List<String> receivedMessages = new ArrayList<>(10);
     private boolean exit = false;
 
-    private final HelloActivity.GreetingActivities activities =
-        Workflow.newActivityStub(
-            HelloActivity.GreetingActivities.class,
-            ActivityOptions.newBuilder().setStartToCloseTimeout(Duration.ofSeconds(2)).build());
+    private final HelloActivity.GreetingActivities activities = Workflow.newActivityStub(
+        HelloActivity.GreetingActivities.class,
+        ActivityOptions.newBuilder().setStartToCloseTimeout(Duration.ofSeconds(2)).build());
 
     @Override
     public List<String> getGreetings() {
@@ -118,8 +135,10 @@ public class HelloUpdate {
           /*
            * no messages in queue and exit signal was sent, return the received messages.
            *
-           * Note: A accepted update will not stop workflow completion. If a workflow tries to complete after an update
-           * has been sent by a client, but before it has been accepted by the workflow, the workflow will not complete.
+           * Note: A accepted update will not stop workflow completion. If a workflow
+           * tries to complete after an update
+           * has been sent by a client, but before it has been accepted by the workflow,
+           * the workflow will not complete.
            */
           return receivedMessages;
         }
@@ -132,10 +151,12 @@ public class HelloUpdate {
     public int addGreeting(String name) {
       if (name.isEmpty()) {
         /*
-         * Updates can fail by throwing a TemporalFailure. All other exceptions cause the workflow
+         * Updates can fail by throwing a TemporalFailure. All other exceptions cause
+         * the workflow
          * task to fail and potentially retried.
          *
-         * Note: A check like this could (and should) belong in the validator, this is just to demonstrate failing an
+         * Note: A check like this could (and should) belong in the validator, this is
+         * just to demonstrate failing an
          * update.
          */
         throw ApplicationFailure.newFailure("Cannot greet someone with an empty name", "Failure");
@@ -149,12 +170,14 @@ public class HelloUpdate {
     @Override
     public void addGreetingValidator(String name) {
       /*
-       * Update validators have the same restrictions as Queries. So workflow state cannot be
+       * Update validators have the same restrictions as Queries. So workflow state
+       * cannot be
        * mutated inside a validator.
        */
       if (receivedMessages.size() >= 10) {
         /*
-         * Throwing any exception inside an update validator will cause the update to be rejected.
+         * Throwing any exception inside an update validator will cause the update to be
+         * rejected.
          * Note: rejected update will not appear in the workflow history
          */
         throw new IllegalStateException("Only 10 greetings may be added");
@@ -168,14 +191,19 @@ public class HelloUpdate {
   }
 
   /**
-   * With the Workflow and Activities defined, we can now start execution. 
+   * With the Workflow and Activities defined, we can now start execution.
    * The main method starts the worker and then the workflow.
    */
   public static void main(String[] args) throws Exception {
 
+    String namespace = AppConfig.TEMPORAL_NAMESPACE;
+
     /* Temporal client connection */
     WorkflowServiceStubs service = WorkflowServiceStubs.newLocalServiceStubs();
-    WorkflowClient client = WorkflowClient.newInstance(service);
+    WorkflowClient client = WorkflowClient.newInstance(service,
+        WorkflowClientOptions.newBuilder()
+            .setNamespace(namespace)
+            .build());
     WorkerFactory factory = WorkerFactory.newInstance(client);
 
     /* Temporal Task Queue */
@@ -189,7 +217,8 @@ public class HelloUpdate {
     worker.registerWorkflowImplementationTypes(GreetingWorkflowImpl.class);
 
     /*
-     * Register our Activity Types with the Worker. Since Activities are stateless and thread-safe,
+     * Register our Activity Types with the Worker. Since Activities are stateless
+     * and thread-safe,
      * the Activity Type is a shared instance.
      */
     worker.registerActivitiesImplementations(new HelloActivity.GreetingActivitiesImpl());
@@ -200,13 +229,11 @@ public class HelloUpdate {
      */
     factory.start();
 
-
     // Create the workflow options
-    WorkflowOptions workflowOptions =
-        WorkflowOptions.newBuilder()
-           .setWorkflowId(WORKFLOW_ID)
-           .setTaskQueue(AppConfig.TASK_QUEUE)
-           .build();
+    WorkflowOptions workflowOptions = WorkflowOptions.newBuilder()
+        .setWorkflowId(WORKFLOW_ID)
+        .setTaskQueue(AppConfig.TASK_QUEUE)
+        .build();
 
     // Create the workflow client stub. It is used to start the workflow execution.
     GreetingWorkflow workflow = client.newWorkflowStub(GreetingWorkflow.class, workflowOptions);
@@ -214,18 +241,21 @@ public class HelloUpdate {
     // Start workflow asynchronously and call its getGreeting workflow method
     WorkflowClient.start(workflow::getGreetings);
 
-    // After start for getGreeting returns, the workflow is guaranteed to be started.
+    // After start for getGreeting returns, the workflow is guaranteed to be
+    // started.
     // So we can send an update to it using the workflow stub.
     // This workflow keeps receiving updates until exit is called
 
-    // When the workflow is started the getGreetings will block for the previously defined
+    // When the workflow is started the getGreetings will block for the previously
+    // defined
     // conditions
     // Send the first workflow update
     workflow.addGreeting("World");
 
     /*
      * Here we create a new workflow stub using the same workflow id.
-     * We do this to demonstrate that to send an update to an already running workflow
+     * We do this to demonstrate that to send an update to an already running
+     * workflow
      * you only need to know its workflow id.
      */
     GreetingWorkflow workflowById = client.newWorkflowStub(GreetingWorkflow.class, WORKFLOW_ID);
@@ -241,7 +271,8 @@ public class HelloUpdate {
     greetingStub.update("addGreeting", int.class, "Temporal");
 
     try {
-      // The update request will fail on a empty name and the exception will be thrown here.
+      // The update request will fail on a empty name and the exception will be thrown
+      // here.
       workflowById.addGreeting("");
       System.exit(-1);
     } catch (WorkflowUpdateException e) {
@@ -271,10 +302,14 @@ public class HelloUpdate {
     workflowById.exit();
 
     /*
-     * We now call our getGreetings workflow method synchronously after our workflow has started.
-     * This reconnects our workflowById workflow stub to the existing workflow and blocks until
-     * a result is available. Note that this behavior assumes that WorkflowOptions are not configured
-     * with WorkflowIdReusePolicy.AllowDuplicate. If they were, this call would fail with the
+     * We now call our getGreetings workflow method synchronously after our workflow
+     * has started.
+     * This reconnects our workflowById workflow stub to the existing workflow and
+     * blocks until
+     * a result is available. Note that this behavior assumes that WorkflowOptions
+     * are not configured
+     * with WorkflowIdReusePolicy.AllowDuplicate. If they were, this call would fail
+     * with the
      * WorkflowExecutionAlreadyStartedException exception.
      */
     List<String> greetings = workflowById.getGreetings();

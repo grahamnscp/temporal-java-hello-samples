@@ -23,6 +23,7 @@ import io.temporal.activity.ActivityInterface;
 import io.temporal.activity.ActivityMethod;
 import io.temporal.activity.ActivityOptions;
 import io.temporal.client.WorkflowClient;
+import io.temporal.client.WorkflowClientOptions;
 import io.temporal.client.WorkflowOptions;
 import io.temporal.serviceclient.WorkflowServiceStubs;
 import io.temporal.worker.Worker;
@@ -36,13 +37,18 @@ import io.temporal.workflow.WorkflowMethod;
 import java.time.Duration;
 
 /**
- * Sample Temporal workflow that demonstrates the workflow compensation capability.
+ * Sample Temporal workflow that demonstrates the workflow compensation
+ * capability.
  *
- * <p>Compensation deals with undoing or reversing work which has already successfully completed.
- * (also called SAGA). Temporal includes very powerful support for compensation which is showedcased
+ * <p>
+ * Compensation deals with undoing or reversing work which has already
+ * successfully completed.
+ * (also called SAGA). Temporal includes very powerful support for compensation
+ * which is showedcased
  * in this example.
  *
- * @see io.temporal.samples.bookingsaga.TripBookingSaga for another SAGA example.
+ * @see io.temporal.samples.bookingsaga.TripBookingSaga for another SAGA
+ *      example.
  */
 public class HelloSaga {
 
@@ -50,7 +56,8 @@ public class HelloSaga {
   static final String WORKFLOW_ID = "HelloSagaTaskWorkflow";
 
   /**
-   * Define the child workflow interface. It must contain one method annotated with @WorkflowMethod
+   * Define the child workflow interface. It must contain one method annotated
+   * with @WorkflowMethod
    *
    * @see io.temporal.workflow.WorkflowInterface
    * @see io.temporal.workflow.WorkflowMethod
@@ -59,30 +66,36 @@ public class HelloSaga {
   public interface ChildWorkflowOperation {
 
     /**
-     * Define the child workflow method. This method is executed when the child workflow is started.
+     * Define the child workflow method. This method is executed when the child
+     * workflow is started.
      * The child workflow completes when the workflow method finishes execution.
      */
     @WorkflowMethod
     void execute(int amount);
   }
 
-  // Define the child workflow implementation. It implements the execute workflow method
+  // Define the child workflow implementation. It implements the execute workflow
+  // method
   public static class ChildWorkflowOperationImpl implements ChildWorkflowOperation {
 
     /*
-     * Define the ActivityOperation stub. Activity stubs are proxies for activity invocations that
-     * are executed outside of the workflow thread on the activity worker, that can be on a
-     * different host. Temporal is going to dispatch the activity results back to the workflow and
+     * Define the ActivityOperation stub. Activity stubs are proxies for activity
+     * invocations that
+     * are executed outside of the workflow thread on the activity worker, that can
+     * be on a
+     * different host. Temporal is going to dispatch the activity results back to
+     * the workflow and
      * unblock the stub as soon as activity is completed on the activity worker.
      *
-     * <p>In the {@link ActivityOptions} definition the "setStartToCloseTimeout" option sets the
-     * maximum time of a single Activity execution attempt. For this example it is set to 10
+     * <p>In the {@link ActivityOptions} definition the "setStartToCloseTimeout"
+     * option sets the
+     * maximum time of a single Activity execution attempt. For this example it is
+     * set to 10
      * seconds.
      */
-    ActivityOperation activity =
-        Workflow.newActivityStub(
-            ActivityOperation.class,
-            ActivityOptions.newBuilder().setStartToCloseTimeout(Duration.ofSeconds(10)).build());
+    ActivityOperation activity = Workflow.newActivityStub(
+        ActivityOperation.class,
+        ActivityOptions.newBuilder().setStartToCloseTimeout(Duration.ofSeconds(10)).build());
 
     @Override
     public void execute(int amount) {
@@ -91,7 +104,8 @@ public class HelloSaga {
   }
 
   /**
-   * Define the child workflow compensation interface. It must contain one method annotated
+   * Define the child workflow compensation interface. It must contain one method
+   * annotated
    * with @WorkflowMethod
    *
    * @see io.temporal.workflow.WorkflowInterface
@@ -101,32 +115,39 @@ public class HelloSaga {
   public interface ChildWorkflowCompensation {
 
     /**
-     * Define the child workflow compensation method. This method is executed when the child
-     * workflow is started. The child workflow completes when the workflow method finishes
+     * Define the child workflow compensation method. This method is executed when
+     * the child
+     * workflow is started. The child workflow completes when the workflow method
+     * finishes
      * execution.
      */
     @WorkflowMethod
     void compensate(int amount);
   }
 
-  // Define the child workflow compensation implementation. It implements the compensate child
+  // Define the child workflow compensation implementation. It implements the
+  // compensate child
   // workflow method
   public static class ChildWorkflowCompensationImpl implements ChildWorkflowCompensation {
 
     /*
-     * Define the ActivityOperation stub. Activity stubs are proxies for activity invocations that
-     * are executed outside of the workflow thread on the activity worker, that can be on a
-     * different host. Temporal is going to dispatch activity results back to the workflow and
+     * Define the ActivityOperation stub. Activity stubs are proxies for activity
+     * invocations that
+     * are executed outside of the workflow thread on the activity worker, that can
+     * be on a
+     * different host. Temporal is going to dispatch activity results back to the
+     * workflow and
      * unblock the stub as soon as activity is completed on the activity worker.
      *
-     * <p>In the {@link ActivityOptions} definition the"setStartToCloseTimeout" option sets the
-     * maximum time of a single Activity execution attempt. For this example it is set to 10
+     * <p>In the {@link ActivityOptions} definition the"setStartToCloseTimeout"
+     * option sets the
+     * maximum time of a single Activity execution attempt. For this example it is
+     * set to 10
      * seconds.
      */
-    ActivityOperation activity =
-        Workflow.newActivityStub(
-            ActivityOperation.class,
-            ActivityOptions.newBuilder().setStartToCloseTimeout(Duration.ofSeconds(10)).build());
+    ActivityOperation activity = Workflow.newActivityStub(
+        ActivityOperation.class,
+        ActivityOptions.newBuilder().setStartToCloseTimeout(Duration.ofSeconds(10)).build());
 
     @Override
     public void compensate(int amount) {
@@ -135,11 +156,14 @@ public class HelloSaga {
   }
 
   /**
-   * This is the Activity Definition's Interface. Activities are building blocks of any Temporal
-   * Workflow and contain any business logic that could perform long running computation, network
+   * This is the Activity Definition's Interface. Activities are building blocks
+   * of any Temporal
+   * Workflow and contain any business logic that could perform long running
+   * computation, network
    * calls, etc.
    *
-   * <p>Annotating Activity Definition methods with @ActivityMethod is optional.
+   * <p>
+   * Annotating Activity Definition methods with @ActivityMethod is optional.
    *
    * @see io.temporal.activity.ActivityInterface
    * @see io.temporal.activity.ActivityMethod
@@ -154,7 +178,8 @@ public class HelloSaga {
   }
 
   /**
-   * Implementation of the workflow activity interface. It overwrites the defined execute and
+   * Implementation of the workflow activity interface. It overwrites the defined
+   * execute and
    * compensate activity methods.
    */
   public static class ActivityOperationImpl implements ActivityOperation {
@@ -171,7 +196,7 @@ public class HelloSaga {
   }
 
   /**
-   * Define the main workflow interface. 
+   * Define the main workflow interface.
    * Must contain one method annotated with @WorkflowMethod
    *
    * @see io.temporal.workflow.WorkflowInterface
@@ -181,57 +206,70 @@ public class HelloSaga {
   public interface SagaWorkflow {
 
     /**
-     * This is the method that is executed when the Workflow Execution is started. The Workflow
+     * This is the method that is executed when the Workflow Execution is started.
+     * The Workflow
      * Execution completes when this method finishes execution.
      */
     @WorkflowMethod
     void execute();
   }
 
-  // Define the main workflow implementation. It implements the execute workflow method
+  // Define the main workflow implementation. It implements the execute workflow
+  // method
   public static class SagaWorkflowImpl implements SagaWorkflow {
 
     /*
-     * Define the ActivityOperation stub. Activity stubs are proxies for activity invocations that
-     * are executed outside of the workflow thread on the activity worker, that can be on a
-     * different host. Temporal is going to dispatch activity results back to the workflow and
+     * Define the ActivityOperation stub. Activity stubs are proxies for activity
+     * invocations that
+     * are executed outside of the workflow thread on the activity worker, that can
+     * be on a
+     * different host. Temporal is going to dispatch activity results back to the
+     * workflow and
      * unblock the stub as soon as activity is completed on the activity worker.
      *
-     * <p>In the {@link ActivityOptions} definition the "setStartToCloseTimeout" option sets the
-     * maximum time of a single Activity execution attempt. For this example it is set to 2 seconds.
+     * <p>In the {@link ActivityOptions} definition the "setStartToCloseTimeout"
+     * option sets the
+     * maximum time of a single Activity execution attempt. For this example it is
+     * set to 2 seconds.
      */
-    ActivityOperation activity =
-        Workflow.newActivityStub(
-            ActivityOperation.class,
-            ActivityOptions.newBuilder().setStartToCloseTimeout(Duration.ofSeconds(2)).build());
+    ActivityOperation activity = Workflow.newActivityStub(
+        ActivityOperation.class,
+        ActivityOptions.newBuilder().setStartToCloseTimeout(Duration.ofSeconds(2)).build());
 
     @Override
     public void execute() {
 
-      // {@link io.temporal.workflow.Saga} implements the logic to perform compensation operations
+      // {@link io.temporal.workflow.Saga} implements the logic to perform
+      // compensation operations
       Saga saga = new Saga(new Saga.Options.Builder().setParallelCompensation(false).build());
 
       try {
 
         /*
-         * First we show how to compensate sync child workflow invocations. We first create a child
-         * workflow stub and execute its "execute" method. Then we create a stub of the child
-         * compensation workflow and register it with Saga. At this point this compensation workflow
-         * is not invoked. It is invoked explicitly when we actually want to invoke compensation
+         * First we show how to compensate sync child workflow invocations. We first
+         * create a child
+         * workflow stub and execute its "execute" method. Then we create a stub of the
+         * child
+         * compensation workflow and register it with Saga. At this point this
+         * compensation workflow
+         * is not invoked. It is invoked explicitly when we actually want to invoke
+         * compensation
          * (via saga.compensate()).
          */
         ChildWorkflowOperation op1 = Workflow.newChildWorkflowStub(ChildWorkflowOperation.class);
         op1.execute(10);
-        ChildWorkflowCompensation c1 =
-            Workflow.newChildWorkflowStub(ChildWorkflowCompensation.class);
+        ChildWorkflowCompensation c1 = Workflow.newChildWorkflowStub(ChildWorkflowCompensation.class);
         saga.addCompensation(c1::compensate, -10);
 
         /*
-         * Now we show compensation of workflow activities which are invoked asynchronously. We
-         * invoke the activity "execute" method async. Then we register its "compensate" method as
+         * Now we show compensation of workflow activities which are invoked
+         * asynchronously. We
+         * invoke the activity "execute" method async. Then we register its "compensate"
+         * method as
          * the compensation method for it.
          *
-         * <p>Again note that the compensation of this activity again is only explicitly invoked
+         * <p>Again note that the compensation of this activity again is only explicitly
+         * invoked
          * (via saga.compensate()).
          */
         Promise<Void> result = Async.procedure(activity::execute, 20);
@@ -246,8 +284,10 @@ public class HelloSaga {
          * method or an activity method. It is associated with the currently executing
          * workflow method.
          *
-         * Also note that here in this example we use System.out in the main workflow logic.
-         * In production make sure to use Workflow.getLogger to log messages from workflow code.
+         * Also note that here in this example we use System.out in the main workflow
+         * logic.
+         * In production make sure to use Workflow.getLogger to log messages from
+         * workflow code.
          */
         saga.addCompensation(
             () -> System.out.println("Other compensation logic in main workflow."));
@@ -270,22 +310,29 @@ public class HelloSaga {
   }
 
   /**
-   * With our Workflow and Activities defined, we can now start execution. The main method starts
+   * With our Workflow and Activities defined, we can now start execution. The
+   * main method starts
    * the worker and then the workflow.
    */
   public static void main(String[] args) {
 
+    String namespace = AppConfig.TEMPORAL_NAMESPACE;
+
     /* Temporal client connection */
     WorkflowServiceStubs service = WorkflowServiceStubs.newLocalServiceStubs();
-    WorkflowClient client = WorkflowClient.newInstance(service);
+    WorkflowClient client = WorkflowClient.newInstance(service,
+        WorkflowClientOptions.newBuilder()
+            .setNamespace(namespace)
+            .build());
     WorkerFactory factory = WorkerFactory.newInstance(client);
 
     /* Temporal Task Queue */
     Worker worker = factory.newWorker(AppConfig.TASK_QUEUE);
 
     /*
-     * Register our workflow implementations with the worker. 
-     * Since workflows are stateful in nature, we need to register our workflow types.
+     * Register our workflow implementations with the worker.
+     * Since workflows are stateful in nature, we need to register our workflow
+     * types.
      */
     worker.registerWorkflowImplementationTypes(
         HelloSaga.SagaWorkflowImpl.class,
@@ -293,8 +340,9 @@ public class HelloSaga {
         HelloSaga.ChildWorkflowCompensationImpl.class);
 
     /*
-     * Register our Activity Types with the Worker. 
-     * Since Activities are stateless and thread-safe, the Activity Type is a shared instance.
+     * Register our Activity Types with the Worker.
+     * Since Activities are stateless and thread-safe, the Activity Type is a shared
+     * instance.
      */
     worker.registerActivitiesImplementations(new ActivityOperationImpl());
 
@@ -304,17 +352,14 @@ public class HelloSaga {
      */
     factory.start();
 
-
     // Create our workflow options
-    WorkflowOptions workflowOptions =
-        WorkflowOptions.newBuilder()
-           .setWorkflowId(WORKFLOW_ID)
-           .setTaskQueue(AppConfig.TASK_QUEUE)
-           .build();
+    WorkflowOptions workflowOptions = WorkflowOptions.newBuilder()
+        .setWorkflowId(WORKFLOW_ID)
+        .setTaskQueue(AppConfig.TASK_QUEUE)
+        .build();
 
     // Create the workflow client stub. It is used to start our workflow execution.
-    HelloSaga.SagaWorkflow workflow =
-        client.newWorkflowStub(HelloSaga.SagaWorkflow.class, workflowOptions);
+    HelloSaga.SagaWorkflow workflow = client.newWorkflowStub(HelloSaga.SagaWorkflow.class, workflowOptions);
 
     // Execute our workflow
     workflow.execute();

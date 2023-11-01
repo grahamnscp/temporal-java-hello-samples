@@ -23,6 +23,7 @@ import io.temporal.activity.ActivityInterface;
 import io.temporal.activity.ActivityMethod;
 import io.temporal.activity.LocalActivityOptions;
 import io.temporal.client.WorkflowClient;
+import io.temporal.client.WorkflowClientOptions;
 import io.temporal.client.WorkflowOptions;
 import io.temporal.serviceclient.WorkflowServiceStubs;
 import io.temporal.worker.Worker;
@@ -33,23 +34,31 @@ import io.temporal.workflow.WorkflowMethod;
 import java.time.Duration;
 
 /**
- * Hello World Temporal workflow that executes a single local activity. Requires a local instance
+ * Hello World Temporal workflow that executes a single local activity. Requires
+ * a local instance
  * the Temporal service to be running.
  *
- * <p>Some of the Activities are very short lived and do not need the queuing semantic, flow
- * control, rate limiting and routing capabilities. For these Temporal supports so called local
- * Activity feature. Local Activities are executed in the same worker process as the Workflow that
+ * <p>
+ * Some of the Activities are very short lived and do not need the queuing
+ * semantic, flow
+ * control, rate limiting and routing capabilities. For these Temporal supports
+ * so called local
+ * Activity feature. Local Activities are executed in the same worker process as
+ * the Workflow that
  * invoked them. Consider using local Activities for functions that are:
  *
  * <ul>
- *   <li>no longer than a few seconds
- *   <li>do not require global rate limiting
- *   <li>do not require routing to specific workers or pools of workers
- *   <li>can be implemented in the same binary as the Workflow that invokes them
+ * <li>no longer than a few seconds
+ * <li>do not require global rate limiting
+ * <li>do not require routing to specific workers or pools of workers
+ * <li>can be implemented in the same binary as the Workflow that invokes them
  * </ul>
  *
- * <p>The main benefit of local Activities is that they are much more efficient in utilizing
- * Temporal service resources and have much lower latency overhead comparing to the usual Activity
+ * <p>
+ * The main benefit of local Activities is that they are much more efficient in
+ * utilizing
+ * Temporal service resources and have much lower latency overhead comparing to
+ * the usual Activity
  * invocation.
  */
 public class HelloLocalActivity {
@@ -58,10 +67,14 @@ public class HelloLocalActivity {
   static final String WORKFLOW_ID = "HelloLocalActivityWorkflow";
 
   /**
-   * The Workflow Definition's Interface must contain one method annotated with @WorkflowMethod.
+   * The Workflow Definition's Interface must contain one method annotated
+   * with @WorkflowMethod.
    *
-   * <p>Workflow Definitions should not contain any heavyweight computations, non-deterministic
-   * code, network calls, database operations, etc. Those things should be handled by the
+   * <p>
+   * Workflow Definitions should not contain any heavyweight computations,
+   * non-deterministic
+   * code, network calls, database operations, etc. Those things should be handled
+   * by the
    * Activities.
    *
    * @see io.temporal.workflow.WorkflowInterface
@@ -80,20 +93,24 @@ public class HelloLocalActivity {
     String composeGreeting(String greeting, String name);
   }
 
-  /** GreetingWorkflow implementation that calls GreetingsActivities#composeGreeting. */
+  /**
+   * GreetingWorkflow implementation that calls
+   * GreetingsActivities#composeGreeting.
+   */
   public static class GreetingWorkflowImpl implements GreetingWorkflow {
 
     /**
-     * Activity stub implements activity interface and proxies calls to it to Temporal activity
-     * invocations. Because activities are reentrant, only a single stub can be used for multiple
+     * Activity stub implements activity interface and proxies calls to it to
+     * Temporal activity
+     * invocations. Because activities are reentrant, only a single stub can be used
+     * for multiple
      * activity invocations.
      */
-    private final GreetingActivities activities =
-        Workflow.newLocalActivityStub(
-            GreetingActivities.class,
-            LocalActivityOptions.newBuilder()
-                .setStartToCloseTimeout(Duration.ofSeconds(2))
-                .build());
+    private final GreetingActivities activities = Workflow.newLocalActivityStub(
+        GreetingActivities.class,
+        LocalActivityOptions.newBuilder()
+            .setStartToCloseTimeout(Duration.ofSeconds(2))
+            .build());
 
     @Override
     public String getGreeting(String name) {
@@ -111,9 +128,14 @@ public class HelloLocalActivity {
 
   public static void main(String[] args) {
 
+    String namespace = AppConfig.TEMPORAL_NAMESPACE;
+
     /* Temporal client connection */
     WorkflowServiceStubs service = WorkflowServiceStubs.newLocalServiceStubs();
-    WorkflowClient client = WorkflowClient.newInstance(service);
+    WorkflowClient client = WorkflowClient.newInstance(service,
+        WorkflowClientOptions.newBuilder()
+            .setNamespace(namespace)
+            .build());
     WorkerFactory factory = WorkerFactory.newInstance(client);
 
     /* Temporal Task Queue */
@@ -128,19 +150,18 @@ public class HelloLocalActivity {
     // Start listening to the workflow and activity task queues.
     factory.start();
 
-
     // Start a workflow execution. Usually this is done from another program.
     // Uses task queue from the GreetingWorkflow @WorkflowMethod annotation.
-    GreetingWorkflow workflow =
-        client.newWorkflowStub(
-            GreetingWorkflow.class, WorkflowOptions.newBuilder()
-                .setWorkflowId(WORKFLOW_ID)
-                .setTaskQueue(AppConfig.TASK_QUEUE)
-                .build());
+    GreetingWorkflow workflow = client.newWorkflowStub(
+        GreetingWorkflow.class, WorkflowOptions.newBuilder()
+            .setWorkflowId(WORKFLOW_ID)
+            .setTaskQueue(AppConfig.TASK_QUEUE)
+            .build());
 
     // Execute a workflow waiting for it to complete. See {@link
     // hellosamples.HelloSignal}
-    // for an example of starting workflow without waiting synchronously for its result.
+    // for an example of starting workflow without waiting synchronously for its
+    // result.
     String greeting = workflow.getGreeting("World");
     System.out.println(greeting);
     System.exit(0);

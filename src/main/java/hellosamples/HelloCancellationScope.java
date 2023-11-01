@@ -26,6 +26,7 @@ import io.temporal.activity.ActivityInterface;
 import io.temporal.activity.ActivityOptions;
 import io.temporal.client.ActivityCompletionException;
 import io.temporal.client.WorkflowClient;
+import io.temporal.client.WorkflowClientOptions;
 import io.temporal.client.WorkflowOptions;
 import io.temporal.failure.ActivityFailure;
 import io.temporal.failure.CanceledFailure;
@@ -46,8 +47,10 @@ import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Sample Temporal Workflow Definition that demonstrates parallel Activity Executions with a
- * Cancellation Scope. When one of the Activity Executions finish, we cancel the execution of the
+ * Sample Temporal Workflow Definition that demonstrates parallel Activity
+ * Executions with a
+ * Cancellation Scope. When one of the Activity Executions finish, we cancel the
+ * execution of the
  * other Activities and wait for their cancellation to complete.
  */
 public class HelloCancellationScope {
@@ -56,10 +59,14 @@ public class HelloCancellationScope {
   static final String WORKFLOW_ID = "HelloCancellationScopeWorkflow";
 
   /**
-   * The Workflow Definition's Interface must contain one method annotated with @WorkflowMethod.
+   * The Workflow Definition's Interface must contain one method annotated
+   * with @WorkflowMethod.
    *
-   * <p>Workflow Definitions should not contain any heavyweight computations, non-deterministic
-   * code, network calls, database operations, etc. Those things should be handled by the
+   * <p>
+   * Workflow Definitions should not contain any heavyweight computations,
+   * non-deterministic
+   * code, network calls, database operations, etc. Those things should be handled
+   * by the
    * Activities.
    *
    * @see io.temporal.workflow.WorkflowInterface
@@ -69,7 +76,8 @@ public class HelloCancellationScope {
   public interface GreetingWorkflow {
 
     /**
-     * This is the method that is executed when the Workflow Execution is started. The Workflow
+     * This is the method that is executed when the Workflow Execution is started.
+     * The Workflow
      * Execution completes when this method finishes execution.
      */
     @WorkflowMethod
@@ -77,11 +85,14 @@ public class HelloCancellationScope {
   }
 
   /**
-   * This is the Activity Definition's Interface. Activities are building blocks of any Temporal
-   * Workflow and contain any business logic that could perform long running computation, network
+   * This is the Activity Definition's Interface. Activities are building blocks
+   * of any Temporal
+   * Workflow and contain any business logic that could perform long running
+   * computation, network
    * calls, etc.
    *
-   * <p>Annotating Activity Definition methods with @ActivityMethod is optional.
+   * <p>
+   * Annotating Activity Definition methods with @ActivityMethod is optional.
    *
    * @see io.temporal.activity.ActivityInterface
    * @see io.temporal.activity.ActivityMethod
@@ -91,44 +102,54 @@ public class HelloCancellationScope {
     String composeGreeting(String greeting, String name);
   }
 
-  // Define the workflow implementation which implements our getGreeting workflow method.
+  // Define the workflow implementation which implements our getGreeting workflow
+  // method.
   public static class GreetingWorkflowImpl implements GreetingWorkflow {
 
     private static final int ACTIVITY_MAX_SLEEP_SECONDS = 30;
     private static final int ACTIVITY_MAX_CLEANUP_SECONDS = 5;
-    private static final int ACTIVITY_START_TO_CLOSE_TIMEOUT =
-        ACTIVITY_MAX_SLEEP_SECONDS + ACTIVITY_MAX_CLEANUP_SECONDS + 10;
+    private static final int ACTIVITY_START_TO_CLOSE_TIMEOUT = ACTIVITY_MAX_SLEEP_SECONDS + ACTIVITY_MAX_CLEANUP_SECONDS
+        + 10;
 
-    private static final String[] greetings =
-        new String[] {"Hello", "Bye", "Hola", "Привет", "Oi", "Hallo"};
+    private static final String[] greetings = new String[] { "Hello", "Bye", "Hola", "Привет", "Oi", "Hallo" };
 
     /**
-     * Define the GreetingActivities stub. Activity stubs are proxies for activity invocations that
-     * are executed outside of the workflow thread on the activity worker, that can be on a
-     * different host. Temporal is going to dispatch the activity results back to the workflow and
+     * Define the GreetingActivities stub. Activity stubs are proxies for activity
+     * invocations that
+     * are executed outside of the workflow thread on the activity worker, that can
+     * be on a
+     * different host. Temporal is going to dispatch the activity results back to
+     * the workflow and
      * unblock the stub as soon as activity is completed on the activity worker.
      *
-     * <p>In the {@link ActivityOptions} definition the "setStartToCloseTimeout" option sets the
-     * maximum time of a single Activity execution attempt. For this example it is set to 10
+     * <p>
+     * In the {@link ActivityOptions} definition the "setStartToCloseTimeout" option
+     * sets the
+     * maximum time of a single Activity execution attempt. For this example it is
+     * set to 10
      * seconds.
      *
-     * <p>The "setCancellationType" option means that in case of activity cancellation the activity
+     * <p>
+     * The "setCancellationType" option means that in case of activity cancellation
+     * the activity
      * should fail with {@link CanceledFailure}. We set
-     * ActivityCancellationType.WAIT_CANCELLATION_COMPLETED which denotes that activity should be
-     * first notified of the cancellation, and cancelled after it can perform some cleanup tasks for
-     * example. Note that an activity must heartbeat to receive cancellation notifications.
+     * ActivityCancellationType.WAIT_CANCELLATION_COMPLETED which denotes that
+     * activity should be
+     * first notified of the cancellation, and cancelled after it can perform some
+     * cleanup tasks for
+     * example. Note that an activity must heartbeat to receive cancellation
+     * notifications.
      */
-    private final GreetingActivities activities =
-        Workflow.newActivityStub(
-            GreetingActivities.class,
-            ActivityOptions.newBuilder()
-                // if heartbeat timeout is not set, activity heartbeats will be throttled to one
-                // every 30 seconds
-                // which is too rare for the cancellations to be delivered in this example.
-                .setHeartbeatTimeout(Duration.ofSeconds(5))
-                .setStartToCloseTimeout(Duration.ofSeconds(ACTIVITY_START_TO_CLOSE_TIMEOUT))
-                .setCancellationType(ActivityCancellationType.WAIT_CANCELLATION_COMPLETED)
-                .build());
+    private final GreetingActivities activities = Workflow.newActivityStub(
+        GreetingActivities.class,
+        ActivityOptions.newBuilder()
+            // if heartbeat timeout is not set, activity heartbeats will be throttled to one
+            // every 30 seconds
+            // which is too rare for the cancellations to be delivered in this example.
+            .setHeartbeatTimeout(Duration.ofSeconds(5))
+            .setStartToCloseTimeout(Duration.ofSeconds(ACTIVITY_START_TO_CLOSE_TIMEOUT))
+            .setCancellationType(ActivityCancellationType.WAIT_CANCELLATION_COMPLETED)
+            .build());
 
     @Override
     public String getGreeting(String name) {
@@ -136,19 +157,20 @@ public class HelloCancellationScope {
 
       /*
        * Create our CancellationScope. Within this scope we call the workflow activity
-       * composeGreeting method asynchronously for each of our defined greetings in different
+       * composeGreeting method asynchronously for each of our defined greetings in
+       * different
        * languages.
        */
-      CancellationScope scope =
-          Workflow.newCancellationScope(
-              () -> {
-                for (String greeting : greetings) {
-                  results.add(Async.function(activities::composeGreeting, greeting, name));
-                }
-              });
+      CancellationScope scope = Workflow.newCancellationScope(
+          () -> {
+            for (String greeting : greetings) {
+              results.add(Async.function(activities::composeGreeting, greeting, name));
+            }
+          });
 
       /*
-       * Execute all activities within the CancellationScope. Note that this execution is
+       * Execute all activities within the CancellationScope. Note that this execution
+       * is
        * non-blocking as the code inside our cancellation scope is also non-blocking.
        */
       scope.run();
@@ -156,15 +178,16 @@ public class HelloCancellationScope {
       // We use "anyOf" here to wait for one of the activity invocations to return
       String result = Promise.anyOf(results).get();
 
-      // Trigger cancellation of all uncompleted activity invocations within the cancellation scope
+      // Trigger cancellation of all uncompleted activity invocations within the
+      // cancellation scope
       scope.cancel();
 
       /*
-       *  Wait for all activities to perform cleanup if needed.
-       *  For the sake of the example we ignore cancellations and
-       *  get all the results so that we can print them in the end.
+       * Wait for all activities to perform cleanup if needed.
+       * For the sake of the example we ignore cancellations and
+       * get all the results so that we can print them in the end.
        *
-       *  Note that we cannot use "allOf" here as that fails on any Promise failures
+       * Note that we cannot use "allOf" here as that fails on any Promise failures
        */
       for (Promise<String> activityResult : results) {
         try {
@@ -180,7 +203,8 @@ public class HelloCancellationScope {
   }
 
   /**
-   * Implementation of our workflow activity interface. It overwrites our defined composeGreeting
+   * Implementation of our workflow activity interface. It overwrites our defined
+   * composeGreeting
    * method.
    */
   static class GreetingActivitiesImpl implements GreetingActivities {
@@ -199,17 +223,20 @@ public class HelloCancellationScope {
       for (int i = 0; i < seconds; i++) {
         sleep(1);
         try {
-          // Perform the heartbeat. Used to notify the workflow that activity execution is alive
+          // Perform the heartbeat. Used to notify the workflow that activity execution is
+          // alive
           context.heartbeat(i);
         } catch (ActivityCompletionException e) {
           /*
            * Activity heartbeat can throw an exception for multiple reasons, including:
            * 1) activity cancellation
-           * 2) activity not existing (due to a timeout for example) from the service point of view
+           * 2) activity not existing (due to a timeout for example) from the service
+           * point of view
            * 3) activity worker shutdown request
            *
            * In our case our activity fails because one of the other performed activities
-           * has completed execution and our workflow method has issued the "cancel" request
+           * has completed execution and our workflow method has issued the "cancel"
+           * request
            * to cancel all other activities in the cancellation scope.
            *
            * The following code simulates our activity after cancellation "cleanup"
@@ -242,31 +269,39 @@ public class HelloCancellationScope {
   }
 
   /**
-   * With our Workflow and Activities defined, we can now start execution. The main method starts
+   * With our Workflow and Activities defined, we can now start execution. The
+   * main method starts
    * the worker and then the workflow.
    */
   public static void main(String[] args) {
 
+    String namespace = AppConfig.TEMPORAL_NAMESPACE;
+
     /* Temporal client connection */
     WorkflowServiceStubs service = WorkflowServiceStubs.newLocalServiceStubs();
-    WorkflowClient client = WorkflowClient.newInstance(service);
+    WorkflowClient client = WorkflowClient.newInstance(service,
+        WorkflowClientOptions.newBuilder()
+            .setNamespace(namespace)
+            .build());
     WorkerFactory factory = WorkerFactory.newInstance(client);
 
     /*
-     * Define the workflow worker. Workflow workers listen to a defined task queue and process
+     * Define the workflow worker. Workflow workers listen to a defined task queue
+     * and process
      * workflows and activities.
      *
      * In the {@link ActivityOptions} definition the
-     * "setMaxConcurrentActivityExecutionSize" option sets the max number of parallel activity executions allowed
-     * The "setMaxConcurrentActivityTaskPollers" option sets the number of simultaneous poll requests on activity task queue
+     * "setMaxConcurrentActivityExecutionSize" option sets the max number of
+     * parallel activity executions allowed
+     * The "setMaxConcurrentActivityTaskPollers" option sets the number of
+     * simultaneous poll requests on activity task queue
      */
-    Worker worker =
-        factory.newWorker(
-            AppConfig.TASK_QUEUE,
-            WorkerOptions.newBuilder()
-                .setMaxConcurrentActivityExecutionSize(100)
-                .setMaxConcurrentActivityTaskPollers(1)
-                .build());
+    Worker worker = factory.newWorker(
+        AppConfig.TASK_QUEUE,
+        WorkerOptions.newBuilder()
+            .setMaxConcurrentActivityExecutionSize(100)
+            .setMaxConcurrentActivityTaskPollers(1)
+            .build());
 
     /*
      * Register our workflow implementation with the worker.
@@ -276,7 +311,8 @@ public class HelloCancellationScope {
     worker.registerWorkflowImplementationTypes(GreetingWorkflowImpl.class);
 
     /*
-     * Register our Activity Types with the Worker. Since Activities are stateless and thread-safe,
+     * Register our Activity Types with the Worker. Since Activities are stateless
+     * and thread-safe,
      * the Activity Type is a shared instance.
      */
     worker.registerActivitiesImplementations(new GreetingActivitiesImpl());
@@ -287,18 +323,17 @@ public class HelloCancellationScope {
      */
     factory.start();
 
-
     // Create the workflow client stub. It is used to start our workflow execution.
-    GreetingWorkflow workflow =
-        client.newWorkflowStub(
-            GreetingWorkflow.class,
-            WorkflowOptions.newBuilder()
-                .setWorkflowId(WORKFLOW_ID)
-                .setTaskQueue(AppConfig.TASK_QUEUE)
-                .build());
+    GreetingWorkflow workflow = client.newWorkflowStub(
+        GreetingWorkflow.class,
+        WorkflowOptions.newBuilder()
+            .setWorkflowId(WORKFLOW_ID)
+            .setTaskQueue(AppConfig.TASK_QUEUE)
+            .build());
 
     /*
-     * Execute our workflow and wait for it to complete. The call to our getGreeting method is
+     * Execute our workflow and wait for it to complete. The call to our getGreeting
+     * method is
      * synchronous.
      */
     String greeting = workflow.getGreeting("World");

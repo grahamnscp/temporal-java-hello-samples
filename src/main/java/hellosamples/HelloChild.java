@@ -20,6 +20,7 @@
 package hellosamples;
 
 import io.temporal.client.WorkflowClient;
+import io.temporal.client.WorkflowClientOptions;
 import io.temporal.client.WorkflowOptions;
 import io.temporal.serviceclient.WorkflowServiceStubs;
 import io.temporal.worker.Worker;
@@ -31,9 +32,12 @@ import io.temporal.workflow.WorkflowInterface;
 import io.temporal.workflow.WorkflowMethod;
 
 /**
- * Sample Temporal Workflow Definition that demonstrates the execution of a Child Workflow. Child
- * workflows allow you to group your Workflow logic into small logical and reusable units that solve
- * a particular problem. They can be typically reused by multiple other Workflows.
+ * Sample Temporal Workflow Definition that demonstrates the execution of a
+ * Child Workflow. Child
+ * workflows allow you to group your Workflow logic into small logical and
+ * reusable units that solve
+ * a particular problem. They can be typically reused by multiple other
+ * Workflows.
  */
 public class HelloChild {
 
@@ -41,7 +45,8 @@ public class HelloChild {
   static final String WORKFLOW_ID = "HelloChildWorkflow";
 
   /**
-   * Define the parent workflow interface. It must contain one method annotated with @WorkflowMethod
+   * Define the parent workflow interface. It must contain one method annotated
+   * with @WorkflowMethod
    *
    * @see io.temporal.workflow.WorkflowInterface
    * @see io.temporal.workflow.WorkflowMethod
@@ -50,7 +55,8 @@ public class HelloChild {
   public interface GreetingWorkflow {
 
     /**
-     * Define the parent workflow method. This method is executed when the workflow is started. The
+     * Define the parent workflow method. This method is executed when the workflow
+     * is started. The
      * workflow completes when the workflow method finishes execution.
      */
     @WorkflowMethod
@@ -58,7 +64,8 @@ public class HelloChild {
   }
 
   /**
-   * Define the child workflow Interface. It must contain one method annotated with @WorkflowMethod
+   * Define the child workflow Interface. It must contain one method annotated
+   * with @WorkflowMethod
    *
    * @see io.temporal.workflow.WorkflowInterface
    * @see io.temporal.workflow.WorkflowMethod
@@ -67,14 +74,16 @@ public class HelloChild {
   public interface GreetingChild {
 
     /**
-     * Define the child workflow method. This method is executed when the workflow is started. The
+     * Define the child workflow method. This method is executed when the workflow
+     * is started. The
      * workflow completes when the workflow method finishes execution.
      */
     @WorkflowMethod
     String composeGreeting(String greeting, String name);
   }
 
-  // Define the parent workflow implementation. It implements the getGreeting workflow method
+  // Define the parent workflow implementation. It implements the getGreeting
+  // workflow method
   public static class GreetingWorkflowImpl implements GreetingWorkflow {
 
     @Override
@@ -90,9 +99,11 @@ public class HelloChild {
 
       /*
        * Invoke the child workflows composeGreeting workflow method.
-       * This call is non-blocking and returns immediately returning a {@link io.temporal.workflow.Promise}
+       * This call is non-blocking and returns immediately returning a {@link
+       * io.temporal.workflow.Promise}
        *
-       * You can use child.composeGreeting("Hello", name) instead to call the child workflow method synchronously.
+       * You can use child.composeGreeting("Hello", name) instead to call the child
+       * workflow method synchronously.
        */
       Promise<String> greeting = Async.function(child::composeGreeting, "Hello", name);
 
@@ -102,9 +113,12 @@ public class HelloChild {
   }
 
   /**
-   * Define the parent workflow implementation. It implements the getGreeting workflow method
+   * Define the parent workflow implementation. It implements the getGreeting
+   * workflow method
    *
-   * <p>Note that a workflow implementation must always be public for the Temporal library to be
+   * <p>
+   * Note that a workflow implementation must always be public for the Temporal
+   * library to be
    * able to create its instances.
    */
   public static class GreetingChildImpl implements GreetingChild {
@@ -116,14 +130,20 @@ public class HelloChild {
   }
 
   /**
-   * With the workflow, and child workflow defined, we can now start execution. The main method is
+   * With the workflow, and child workflow defined, we can now start execution.
+   * The main method is
    * the workflow starter.
    */
   public static void main(String[] args) {
 
+    String namespace = AppConfig.TEMPORAL_NAMESPACE;
+
     /* Temporal client connection */
     WorkflowServiceStubs service = WorkflowServiceStubs.newLocalServiceStubs();
-    WorkflowClient client = WorkflowClient.newInstance(service);
+    WorkflowClient client = WorkflowClient.newInstance(service,
+        WorkflowClientOptions.newBuilder()
+            .setNamespace(namespace)
+            .build());
     WorkerFactory factory = WorkerFactory.newInstance(client);
 
     /* Temporal Task Queue */
@@ -142,18 +162,17 @@ public class HelloChild {
      */
     factory.start();
 
-
     // Start a workflow execution. Usually this is done from another program.
     // Uses task queue from the GreetingWorkflow @WorkflowMethod annotation.
 
-    // Create our parent workflow client stub. It is used to start the parent workflow execution.
-    GreetingWorkflow workflow =
-        client.newWorkflowStub(
-            GreetingWorkflow.class,
-            WorkflowOptions.newBuilder()
-                .setWorkflowId(WORKFLOW_ID)
-                .setTaskQueue(AppConfig.TASK_QUEUE)
-                .build());
+    // Create our parent workflow client stub. It is used to start the parent
+    // workflow execution.
+    GreetingWorkflow workflow = client.newWorkflowStub(
+        GreetingWorkflow.class,
+        WorkflowOptions.newBuilder()
+            .setWorkflowId(WORKFLOW_ID)
+            .setTaskQueue(AppConfig.TASK_QUEUE)
+            .build());
 
     // Execute our parent workflow and wait for it to complete.
     String greeting = workflow.getGreeting("World");

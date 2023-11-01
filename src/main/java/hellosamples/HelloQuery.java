@@ -20,6 +20,7 @@
 package hellosamples;
 
 import io.temporal.client.WorkflowClient;
+import io.temporal.client.WorkflowClientOptions;
 import io.temporal.client.WorkflowOptions;
 import io.temporal.serviceclient.WorkflowServiceStubs;
 import io.temporal.worker.Worker;
@@ -30,17 +31,24 @@ import io.temporal.workflow.WorkflowInterface;
 import io.temporal.workflow.WorkflowMethod;
 import java.time.Duration;
 
-/** Sample Temporal Workflow Definition that demonstrates how to Query a Workflow. */
+/**
+ * Sample Temporal Workflow Definition that demonstrates how to Query a
+ * Workflow.
+ */
 public class HelloQuery {
 
   // Define our workflow unique id
   static final String WORKFLOW_ID = "HelloQueryWorkflow";
 
   /**
-   * The Workflow Definition's Interface must contain one method annotated with @WorkflowMethod.
+   * The Workflow Definition's Interface must contain one method annotated
+   * with @WorkflowMethod.
    *
-   * <p>Workflow Definitions should not contain any heavyweight computations, non-deterministic
-   * code, network calls, database operations, etc. Those things should be handled by the
+   * <p>
+   * Workflow Definitions should not contain any heavyweight computations,
+   * non-deterministic
+   * code, network calls, database operations, etc. Those things should be handled
+   * by the
    * Activities.
    *
    * @see io.temporal.workflow.WorkflowInterface
@@ -89,14 +97,19 @@ public class HelloQuery {
   }
 
   /**
-   * With our Workflow and Activities defined, we can now start execution. 
+   * With our Workflow and Activities defined, we can now start execution.
    * The main method starts the worker and then the workflow.
    */
   public static void main(String[] args) throws InterruptedException {
 
+    String namespace = AppConfig.TEMPORAL_NAMESPACE;
+
     /* Temporal client connection */
     WorkflowServiceStubs service = WorkflowServiceStubs.newLocalServiceStubs();
-    WorkflowClient client = WorkflowClient.newInstance(service);
+    WorkflowClient client = WorkflowClient.newInstance(service,
+        WorkflowClientOptions.newBuilder()
+            .setNamespace(namespace)
+            .build());
     WorkerFactory factory = WorkerFactory.newInstance(client);
 
     /* Temporal Task Queue */
@@ -115,13 +128,11 @@ public class HelloQuery {
      */
     factory.start();
 
-
     // Create our workflow options
-    WorkflowOptions workflowOptions =
-        WorkflowOptions.newBuilder()
-           .setWorkflowId(WORKFLOW_ID)
-           .setTaskQueue(AppConfig.TASK_QUEUE)
-           .build();
+    WorkflowOptions workflowOptions = WorkflowOptions.newBuilder()
+        .setWorkflowId(WORKFLOW_ID)
+        .setTaskQueue(AppConfig.TASK_QUEUE)
+        .build();
 
     // Create the workflow client stub. It is used to start our workflow execution.
     GreetingWorkflow workflow = client.newWorkflowStub(GreetingWorkflow.class, workflowOptions);
@@ -129,7 +140,8 @@ public class HelloQuery {
     // Start our workflow asynchronously to not use another thread to query.
     WorkflowClient.start(workflow::createGreeting, "World");
 
-    // After start for getGreeting returns, the workflow is guaranteed to be started.
+    // After start for getGreeting returns, the workflow is guaranteed to be
+    // started.
     // So we can send a signal to it using workflow stub.
 
     /*

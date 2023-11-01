@@ -22,6 +22,7 @@ package hellosamples;
 import io.temporal.activity.ActivityInterface;
 import io.temporal.activity.ActivityOptions;
 import io.temporal.client.WorkflowClient;
+import io.temporal.client.WorkflowClientOptions;
 import io.temporal.client.WorkflowOptions;
 import io.temporal.serviceclient.WorkflowServiceStubs;
 import io.temporal.worker.Worker;
@@ -32,7 +33,8 @@ import io.temporal.workflow.WorkflowMethod;
 import java.time.Duration;
 
 /**
- * Sample Temporal Workflow Definition that demonstrates the execution of multiple Activities which
+ * Sample Temporal Workflow Definition that demonstrates the execution of
+ * multiple Activities which
  * extend a common interface.
  */
 public class HelloPolymorphicActivity {
@@ -41,10 +43,14 @@ public class HelloPolymorphicActivity {
   static final String WORKFLOW_ID = "HelloPolymorphicActivityWorkflow";
 
   /**
-   * The Workflow Definition's Interface must contain one method annotated with @WorkflowMethod.
+   * The Workflow Definition's Interface must contain one method annotated
+   * with @WorkflowMethod.
    *
-   * <p>Workflow Definitions should not contain any heavyweight computations, non-deterministic
-   * code, network calls, database operations, etc. Those things should be handled by the
+   * <p>
+   * Workflow Definitions should not contain any heavyweight computations,
+   * non-deterministic
+   * code, network calls, database operations, etc. Those things should be handled
+   * by the
    * Activities.
    *
    * @see io.temporal.workflow.WorkflowInterface
@@ -54,7 +60,8 @@ public class HelloPolymorphicActivity {
   public interface GreetingWorkflow {
 
     /**
-     * This is the method that is executed when the Workflow Execution is started. The Workflow
+     * This is the method that is executed when the Workflow Execution is started.
+     * The Workflow
      * Execution completes when this method finishes execution.
      */
     @WorkflowMethod
@@ -68,11 +75,15 @@ public class HelloPolymorphicActivity {
   }
 
   /**
-   * Define the first activity interface. Workflow methods can call activities during execution.
+   * Define the first activity interface. Workflow methods can call activities
+   * during execution.
    * Annotating activity methods with @ActivityMethod is optional
    *
-   * <p>Note the activity interface extends the base GreetingActivity interface. Also note that in
-   * order to void the collisions in the activity name (which is by default the name of the activity
+   * <p>
+   * Note the activity interface extends the base GreetingActivity interface. Also
+   * note that in
+   * order to void the collisions in the activity name (which is by default the
+   * name of the activity
    * method) we set the namePrefix annotation parameter.
    *
    * @see io.temporal.activity.ActivityInterface
@@ -85,11 +96,15 @@ public class HelloPolymorphicActivity {
   }
 
   /**
-   * Define the second activity interface. Workflow methods can call activities during execution.
+   * Define the second activity interface. Workflow methods can call activities
+   * during execution.
    * Annotating activity methods with @ActivityMethod is optional
    *
-   * <p>Note that the activity interface extends the base GreetingActivity interface. Also note that
-   * in order to void the collisions in the activity name (which is by default the name of the
+   * <p>
+   * Note that the activity interface extends the base GreetingActivity interface.
+   * Also note that
+   * in order to void the collisions in the activity name (which is by default the
+   * name of the
    * activity method) we set the namePrefix annotation parameter.
    *
    * @see io.temporal.activity.ActivityInterface
@@ -101,29 +116,37 @@ public class HelloPolymorphicActivity {
     String composeGreeting(String name);
   }
 
-  // Define the workflow implementation which implements the getGreeting workflow method.
+  // Define the workflow implementation which implements the getGreeting workflow
+  // method.
   public static class GreetingWorkflowImpl implements GreetingWorkflow {
 
     /**
-     * Define the GreetingActivities stub. Activity stubs are proxies for activity invocations that
-     * are executed outside of the workflow thread on the activity worker, that can be on a
-     * different host. Temporal is going to dispatch the activity results back to the workflow and
+     * Define the GreetingActivities stub. Activity stubs are proxies for activity
+     * invocations that
+     * are executed outside of the workflow thread on the activity worker, that can
+     * be on a
+     * different host. Temporal is going to dispatch the activity results back to
+     * the workflow and
      * unblock the stub as soon as activity is completed on the activity worker.
      *
-     * <p>For this example we define two activity stubs, one for each of the defined activities.
+     * <p>
+     * For this example we define two activity stubs, one for each of the defined
+     * activities.
      *
-     * <p>In the {@link ActivityOptions} definition the "setStartToCloseTimeout" option sets the
-     * maximum time of a single Activity execution attempt. For this example it is set to 2 seconds.
+     * <p>
+     * In the {@link ActivityOptions} definition the "setStartToCloseTimeout" option
+     * sets the
+     * maximum time of a single Activity execution attempt. For this example it is
+     * set to 2 seconds.
      */
-    private final GreetingActivity[] activities =
-        new GreetingActivity[] {
-          Workflow.newActivityStub(
-              HelloActivity.class,
-              ActivityOptions.newBuilder().setStartToCloseTimeout(Duration.ofSeconds(2)).build()),
-          Workflow.newActivityStub(
-              ByeActivity.class,
-              ActivityOptions.newBuilder().setStartToCloseTimeout(Duration.ofSeconds(2)).build())
-        };
+    private final GreetingActivity[] activities = new GreetingActivity[] {
+        Workflow.newActivityStub(
+            HelloActivity.class,
+            ActivityOptions.newBuilder().setStartToCloseTimeout(Duration.ofSeconds(2)).build()),
+        Workflow.newActivityStub(
+            ByeActivity.class,
+            ActivityOptions.newBuilder().setStartToCloseTimeout(Duration.ofSeconds(2)).build())
+    };
 
     @Override
     public String getGreeting(String name) {
@@ -161,14 +184,20 @@ public class HelloPolymorphicActivity {
   }
 
   /**
-   * With our Workflow and Activities defined, we can now start execution. The main method starts
+   * With our Workflow and Activities defined, we can now start execution. The
+   * main method starts
    * the worker and then the workflow.
    */
   public static void main(String[] args) {
 
+    String namespace = AppConfig.TEMPORAL_NAMESPACE;
+
     /* Temporal client connection */
     WorkflowServiceStubs service = WorkflowServiceStubs.newLocalServiceStubs();
-    WorkflowClient client = WorkflowClient.newInstance(service);
+    WorkflowClient client = WorkflowClient.newInstance(service,
+        WorkflowClientOptions.newBuilder()
+            .setNamespace(namespace)
+            .build());
     WorkerFactory factory = WorkerFactory.newInstance(client);
 
     /* Temporal Task Queue */
@@ -182,9 +211,10 @@ public class HelloPolymorphicActivity {
     worker.registerWorkflowImplementationTypes(GreetingWorkflowImpl.class);
 
     /*
-     Register our workflow activities implementations with the worker. Since workflow activities are
-     stateless and thread-safe, we need to register a shared instance.
-    */
+     * Register our workflow activities implementations with the worker. Since
+     * workflow activities are
+     * stateless and thread-safe, we need to register a shared instance.
+     */
     worker.registerActivitiesImplementations(new HelloActivityImpl(), new ByeActivityImpl());
 
     /*
@@ -193,18 +223,17 @@ public class HelloPolymorphicActivity {
      */
     factory.start();
 
-
     // Create the workflow client stub. It is used to start our workflow execution.
-    GreetingWorkflow workflow =
-        client.newWorkflowStub(
-            GreetingWorkflow.class,
-            WorkflowOptions.newBuilder()
-                .setWorkflowId(WORKFLOW_ID)
-                .setTaskQueue(AppConfig.TASK_QUEUE)
-                .build());
+    GreetingWorkflow workflow = client.newWorkflowStub(
+        GreetingWorkflow.class,
+        WorkflowOptions.newBuilder()
+            .setWorkflowId(WORKFLOW_ID)
+            .setTaskQueue(AppConfig.TASK_QUEUE)
+            .build());
 
     /*
-     * Execute our workflow and wait for it to complete. The call to our getGreeting method is
+     * Execute our workflow and wait for it to complete. The call to our getGreeting
+     * method is
      * synchronous.
      *
      * See {@link hellosamples.HelloSignal} for an example of starting workflow

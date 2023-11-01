@@ -20,6 +20,7 @@
 package hellosamples;
 
 import io.temporal.client.WorkflowClient;
+import io.temporal.client.WorkflowClientOptions;
 import io.temporal.client.WorkflowOptions;
 import io.temporal.serviceclient.WorkflowServiceStubs;
 import io.temporal.worker.Worker;
@@ -32,7 +33,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Sample Temporal workflow that demonstrates how to use workflow signal methods to signal from
+ * Sample Temporal workflow that demonstrates how to use workflow signal methods
+ * to signal from
  * external sources.
  */
 public class HelloSignal {
@@ -41,10 +43,14 @@ public class HelloSignal {
   static final String WORKFLOW_ID = "HelloSignalWorkflow";
 
   /**
-   * The Workflow Definition's Interface must contain one method annotated with @WorkflowMethod.
+   * The Workflow Definition's Interface must contain one method annotated
+   * with @WorkflowMethod.
    *
-   * <p>Workflow Definitions should not contain any heavyweight computations, non-deterministic
-   * code, network calls, database operations, etc. Those things should be handled by the
+   * <p>
+   * Workflow Definitions should not contain any heavyweight computations,
+   * non-deterministic
+   * code, network calls, database operations, etc. Those things should be handled
+   * by the
    * Activities.
    *
    * @see io.temporal.workflow.WorkflowInterface
@@ -53,24 +59,28 @@ public class HelloSignal {
   @WorkflowInterface
   public interface GreetingWorkflow {
     /**
-     * This is the method that is executed when the Workflow Execution is started. The Workflow
+     * This is the method that is executed when the Workflow Execution is started.
+     * The Workflow
      * Execution completes when this method finishes execution.
      */
     @WorkflowMethod
     List<String> getGreetings();
 
-    // Define the workflow waitForName signal method. This method is executed when the workflow
+    // Define the workflow waitForName signal method. This method is executed when
+    // the workflow
     // receives a signal.
     @SignalMethod
     void waitForName(String name);
 
-    // Define the workflow exit signal method. This method is executed when the workflow receives a
+    // Define the workflow exit signal method. This method is executed when the
+    // workflow receives a
     // signal.
     @SignalMethod
     void exit();
   }
 
-  // Define the workflow implementation which implements the getGreetings workflow method.
+  // Define the workflow implementation which implements the getGreetings workflow
+  // method.
   public static class GreetingWorkflowImpl implements GreetingWorkflow {
 
     // messageQueue holds up to 10 messages (received from signals)
@@ -105,14 +115,19 @@ public class HelloSignal {
   }
 
   /**
-   * With the Workflow and Activities defined, we can now start execution. 
+   * With the Workflow and Activities defined, we can now start execution.
    * The main method starts the worker and then the workflow.
    */
   public static void main(String[] args) throws Exception {
 
+    String namespace = AppConfig.TEMPORAL_NAMESPACE;
+
     /* Temporal client connection */
     WorkflowServiceStubs service = WorkflowServiceStubs.newLocalServiceStubs();
-    WorkflowClient client = WorkflowClient.newInstance(service);
+    WorkflowClient client = WorkflowClient.newInstance(service,
+        WorkflowClientOptions.newBuilder()
+            .setNamespace(namespace)
+            .build());
     WorkerFactory factory = WorkerFactory.newInstance(client);
 
     /* Temporal Task Queue */
@@ -131,13 +146,11 @@ public class HelloSignal {
      */
     factory.start();
 
-
     // Create the workflow options
-    WorkflowOptions workflowOptions =
-        WorkflowOptions.newBuilder()
-           .setWorkflowId(WORKFLOW_ID)
-           .setTaskQueue(AppConfig.TASK_QUEUE)
-           .build();
+    WorkflowOptions workflowOptions = WorkflowOptions.newBuilder()
+        .setWorkflowId(WORKFLOW_ID)
+        .setTaskQueue(AppConfig.TASK_QUEUE)
+        .build();
 
     // Create the workflow client stub. It is used to start the workflow execution.
     GreetingWorkflow workflow = client.newWorkflowStub(GreetingWorkflow.class, workflowOptions);
@@ -145,18 +158,21 @@ public class HelloSignal {
     // Start workflow asynchronously and call its getGreeting workflow method
     WorkflowClient.start(workflow::getGreetings);
 
-    // After start for getGreeting returns, the workflow is guaranteed to be started.
+    // After start for getGreeting returns, the workflow is guaranteed to be
+    // started.
     // So we can send a signal to it using the workflow stub.
     // This workflow keeps receiving signals until exit is called
 
-    // When the workflow is started the getGreetings will block for the previously defined
+    // When the workflow is started the getGreetings will block for the previously
+    // defined
     // conditions
     // Send the first workflow signal
     workflow.waitForName("World");
 
     /*
      * Here we create a new workflow stub using the same workflow id.
-     * We do this to demonstrate that to send a signal to an already running workflow
+     * We do this to demonstrate that to send a signal to an already running
+     * workflow
      * you only need to know its workflow id.
      */
     GreetingWorkflow workflowById = client.newWorkflowStub(GreetingWorkflow.class, WORKFLOW_ID);
@@ -168,10 +184,14 @@ public class HelloSignal {
     workflowById.exit();
 
     /*
-     * We now call our getGreetings workflow method synchronously after our workflow has started.
-     * This reconnects our workflowById workflow stub to the existing workflow and blocks until
-     * a result is available. Note that this behavior assumes that WorkflowOptions are not configured
-     * with WorkflowIdReusePolicy.AllowDuplicate. If they were, this call would fail with the
+     * We now call our getGreetings workflow method synchronously after our workflow
+     * has started.
+     * This reconnects our workflowById workflow stub to the existing workflow and
+     * blocks until
+     * a result is available. Note that this behavior assumes that WorkflowOptions
+     * are not configured
+     * with WorkflowIdReusePolicy.AllowDuplicate. If they were, this call would fail
+     * with the
      * WorkflowExecutionAlreadyStartedException exception.
      */
     List<String> greetings = workflowById.getGreetings();

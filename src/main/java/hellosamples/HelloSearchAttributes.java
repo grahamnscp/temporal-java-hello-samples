@@ -28,6 +28,7 @@ import io.temporal.api.common.v1.WorkflowExecution;
 import io.temporal.api.workflowservice.v1.DescribeWorkflowExecutionRequest;
 import io.temporal.api.workflowservice.v1.DescribeWorkflowExecutionResponse;
 import io.temporal.client.WorkflowClient;
+import io.temporal.client.WorkflowClientOptions;
 import io.temporal.client.WorkflowOptions;
 import io.temporal.common.converter.DataConverter;
 import io.temporal.common.converter.GlobalDataConverter;
@@ -45,7 +46,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Sample Temporal workflow that demonstrates setting up and retrieving workflow search attributes.
+ * Sample Temporal workflow that demonstrates setting up and retrieving workflow
+ * search attributes.
  */
 public class HelloSearchAttributes {
 
@@ -53,10 +55,14 @@ public class HelloSearchAttributes {
   static final String WORKFLOW_ID = "HelloSearchAttributesWorkflow";
 
   /**
-   * The Workflow Definition's Interface must contain one method annotated with @WorkflowMethod.
+   * The Workflow Definition's Interface must contain one method annotated
+   * with @WorkflowMethod.
    *
-   * <p>Workflow Definitions should not contain any heavyweight computations, non-deterministic
-   * code, network calls, database operations, etc. Those things should be handled by the
+   * <p>
+   * Workflow Definitions should not contain any heavyweight computations,
+   * non-deterministic
+   * code, network calls, database operations, etc. Those things should be handled
+   * by the
    * Activities.
    *
    * @see io.temporal.workflow.WorkflowInterface
@@ -66,7 +72,8 @@ public class HelloSearchAttributes {
   public interface GreetingWorkflow {
 
     /**
-     * This is the method that is executed when the Workflow Execution is started. The Workflow
+     * This is the method that is executed when the Workflow Execution is started.
+     * The Workflow
      * Execution completes when this method finishes execution.
      */
     @WorkflowMethod
@@ -74,11 +81,14 @@ public class HelloSearchAttributes {
   }
 
   /**
-   * This is the Activity Definition's Interface. Activities are building blocks of any Temporal
-   * Workflow and contain any business logic that could perform long running computation, network
+   * This is the Activity Definition's Interface. Activities are building blocks
+   * of any Temporal
+   * Workflow and contain any business logic that could perform long running
+   * computation, network
    * calls, etc.
    *
-   * <p>Annotating Activity Definition methods with @ActivityMethod is optional.
+   * <p>
+   * Annotating Activity Definition methods with @ActivityMethod is optional.
    *
    * @see io.temporal.activity.ActivityInterface
    * @see io.temporal.activity.ActivityMethod
@@ -89,21 +99,26 @@ public class HelloSearchAttributes {
     String composeGreeting(String greeting, String name);
   }
 
-  // Define the workflow implementation which implements our getGreeting workflow method.
+  // Define the workflow implementation which implements our getGreeting workflow
+  // method.
   public static class GreetingWorkflowImpl implements GreetingWorkflow {
 
     /**
-     * Define the GreetingActivities stub. Activity stubs implement activity interfaces and proxy
-     * calls to it to Temporal activity invocations. Since Temporal activities are reentrant, a
+     * Define the GreetingActivities stub. Activity stubs implement activity
+     * interfaces and proxy
+     * calls to it to Temporal activity invocations. Since Temporal activities are
+     * reentrant, a
      * single activity stub can be used for multiple activity invocations.
      *
-     * <p>In the {@link ActivityOptions} definition the "setStartToCloseTimeout" option sets the
-     * maximum time of a single Activity execution attempt. For this example it is set to 2 seconds.
+     * <p>
+     * In the {@link ActivityOptions} definition the "setStartToCloseTimeout" option
+     * sets the
+     * maximum time of a single Activity execution attempt. For this example it is
+     * set to 2 seconds.
      */
-    private final GreetingActivities activities =
-        Workflow.newActivityStub(
-            GreetingActivities.class,
-            ActivityOptions.newBuilder().setStartToCloseTimeout(Duration.ofSeconds(2)).build());
+    private final GreetingActivities activities = Workflow.newActivityStub(
+        GreetingActivities.class,
+        ActivityOptions.newBuilder().setStartToCloseTimeout(Duration.ofSeconds(2)).build());
 
     @Override
     public String getGreeting(String name) {
@@ -113,7 +128,8 @@ public class HelloSearchAttributes {
   }
 
   /**
-   * Implementation of our workflow activity interface. It overwrites our defined composeGreeting
+   * Implementation of our workflow activity interface. It overwrites our defined
+   * composeGreeting
    * activity method.
    */
   static class GreetingActivitiesImpl implements GreetingActivities {
@@ -124,14 +140,19 @@ public class HelloSearchAttributes {
   }
 
   /**
-   * With our Workflow and Activities defined, we can now start execution. 
+   * With our Workflow and Activities defined, we can now start execution.
    * The main method starts the worker and then the workflow.
    */
   public static void main(String[] args) {
 
+    String namespace = AppConfig.TEMPORAL_NAMESPACE;
+
     /* Temporal client connection */
     WorkflowServiceStubs service = WorkflowServiceStubs.newLocalServiceStubs();
-    WorkflowClient client = WorkflowClient.newInstance(service);
+    WorkflowClient client = WorkflowClient.newInstance(service,
+        WorkflowClientOptions.newBuilder()
+            .setNamespace(namespace)
+            .build());
     WorkerFactory factory = WorkerFactory.newInstance(client);
 
     /* Temporal Task Queue */
@@ -145,7 +166,8 @@ public class HelloSearchAttributes {
     worker.registerWorkflowImplementationTypes(HelloSearchAttributes.GreetingWorkflowImpl.class);
 
     /*
-     * Register our Activity Types with the Worker. Since Activities are stateless and thread-safe,
+     * Register our Activity Types with the Worker. Since Activities are stateless
+     * and thread-safe,
      * the Activity Type is a shared instance.
      */
     worker.registerActivitiesImplementations(new HelloSearchAttributes.GreetingActivitiesImpl());
@@ -156,19 +178,17 @@ public class HelloSearchAttributes {
      */
     factory.start();
 
-
     // Set our workflow options.
     // Note that we set our search attributes here
-    WorkflowOptions workflowOptions =
-        WorkflowOptions.newBuilder()
-            .setWorkflowId(WORKFLOW_ID)
-            .setTaskQueue(AppConfig.TASK_QUEUE)
-            .setSearchAttributes(generateSearchAttributes())
-            .build();
+    WorkflowOptions workflowOptions = WorkflowOptions.newBuilder()
+        .setWorkflowId(WORKFLOW_ID)
+        .setTaskQueue(AppConfig.TASK_QUEUE)
+        .setSearchAttributes(generateSearchAttributes())
+        .build();
 
     // Create the workflow client stub. It is used to start our workflow execution.
-    HelloSearchAttributes.GreetingWorkflow workflow =
-        client.newWorkflowStub(HelloSearchAttributes.GreetingWorkflow.class, workflowOptions);
+    HelloSearchAttributes.GreetingWorkflow workflow = client
+        .newWorkflowStub(HelloSearchAttributes.GreetingWorkflow.class, workflowOptions);
 
     // Execute a workflow waiting for it to complete.
     String greeting = workflow.getGreeting("SearchAttributes");
@@ -176,19 +196,18 @@ public class HelloSearchAttributes {
     // Get the workflow execution for the same id as our defined workflow
     WorkflowExecution execution = WorkflowExecution.newBuilder().setWorkflowId(WORKFLOW_ID).build();
 
-    // Create the DescribeWorkflowExecutionRequest through which we can query our client for our
+    // Create the DescribeWorkflowExecutionRequest through which we can query our
+    // client for our
     // search queries
-    DescribeWorkflowExecutionRequest request =
-        DescribeWorkflowExecutionRequest.newBuilder()
-            .setNamespace(client.getOptions().getNamespace())
-            .setExecution(execution)
-            .build();
+    DescribeWorkflowExecutionRequest request = DescribeWorkflowExecutionRequest.newBuilder()
+        .setNamespace(client.getOptions().getNamespace())
+        .setExecution(execution)
+        .build();
 
     try {
 
       // Get the DescribeWorkflowExecutionResponse from our service
-      DescribeWorkflowExecutionResponse resp =
-          service.blockingStub().describeWorkflowExecution(request);
+      DescribeWorkflowExecutionResponse resp = service.blockingStub().describeWorkflowExecution(request);
 
       // get all search attributes
       SearchAttributes searchAttributes = resp.getWorkflowExecutionInfo().getSearchAttributes();
@@ -223,7 +242,7 @@ public class HelloSearchAttributes {
     return searchAttributes;
   }
 
-  // CustomDatetimeField takes times encoded in the  RFC 3339 format.
+  // CustomDatetimeField takes times encoded in the RFC 3339 format.
   private static String generateDateTimeFieldValue() {
     DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssXXX");
     return ZonedDateTime.now(ZoneId.systemDefault()).format(formatter);

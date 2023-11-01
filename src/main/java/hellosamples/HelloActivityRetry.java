@@ -22,6 +22,7 @@ package hellosamples;
 import io.temporal.activity.ActivityInterface;
 import io.temporal.activity.ActivityOptions;
 import io.temporal.client.WorkflowClient;
+import io.temporal.client.WorkflowClientOptions;
 import io.temporal.client.WorkflowOptions;
 import io.temporal.common.RetryOptions;
 import io.temporal.serviceclient.WorkflowServiceStubs;
@@ -39,10 +40,14 @@ public class HelloActivityRetry {
   static final String WORKFLOW_ID = "HelloActivityWithRetriesWorkflow";
 
   /**
-   * The Workflow Definition's Interface must contain one method annotated with @WorkflowMethod.
+   * The Workflow Definition's Interface must contain one method annotated
+   * with @WorkflowMethod.
    *
-   * <p>Workflow Definitions should not contain any heavyweight computations, non-deterministic
-   * code, network calls, database operations, etc. Those things should be handled by the
+   * <p>
+   * Workflow Definitions should not contain any heavyweight computations,
+   * non-deterministic
+   * code, network calls, database operations, etc. Those things should be handled
+   * by the
    * Activities.
    *
    * @see io.temporal.workflow.WorkflowInterface
@@ -52,7 +57,8 @@ public class HelloActivityRetry {
   public interface GreetingWorkflow {
 
     /**
-     * This is the method that is executed when the Workflow Execution is started. The Workflow
+     * This is the method that is executed when the Workflow Execution is started.
+     * The Workflow
      * Execution completes when this method finishes execution.
      */
     @WorkflowMethod
@@ -60,11 +66,14 @@ public class HelloActivityRetry {
   }
 
   /**
-   * This is the Activity Definition's Interface. Activities are building blocks of any Temporal
-   * Workflow and contain any business logic that could perform long running computation, network
+   * This is the Activity Definition's Interface. Activities are building blocks
+   * of any Temporal
+   * Workflow and contain any business logic that could perform long running
+   * computation, network
    * calls, etc.
    *
-   * <p>Annotating Activity Definition methods with @ActivityMethod is optional.
+   * <p>
+   * Annotating Activity Definition methods with @ActivityMethod is optional.
    *
    * @see io.temporal.activity.ActivityInterface
    * @see io.temporal.activity.ActivityMethod
@@ -76,37 +85,48 @@ public class HelloActivityRetry {
     String composeGreeting(String greeting, String name);
   }
 
-  // Define the workflow implementation which implements our getGreeting workflow method.
+  // Define the workflow implementation which implements our getGreeting workflow
+  // method.
   public static class GreetingWorkflowImpl implements GreetingWorkflow {
 
     /**
-     * Define the GreetingActivities stub. Activity stubs are proxies for activity invocations that
-     * are executed outside of the workflow thread on the activity worker, that can be on a
-     * different host. Temporal is going to dispatch the activity results back to the workflow and
+     * Define the GreetingActivities stub. Activity stubs are proxies for activity
+     * invocations that
+     * are executed outside of the workflow thread on the activity worker, that can
+     * be on a
+     * different host. Temporal is going to dispatch the activity results back to
+     * the workflow and
      * unblock the stub as soon as activity is completed on the activity worker.
      *
-     * <p>In the {@link ActivityOptions} definition the "setStartToCloseTimeout" option sets the
-     * maximum time of a single Activity execution attempt. For this example it is set to 10
+     * <p>
+     * In the {@link ActivityOptions} definition the "setStartToCloseTimeout" option
+     * sets the
+     * maximum time of a single Activity execution attempt. For this example it is
+     * set to 10
      * seconds.
      *
-     * <p>In the {@link ActivityOptions} definition the "setInitialInterval" option sets the
-     * interval of the first retry. It is set to 1 second. The "setDoNotRetry" option is a list of
+     * <p>
+     * In the {@link ActivityOptions} definition the "setInitialInterval" option
+     * sets the
+     * interval of the first retry. It is set to 1 second. The "setDoNotRetry"
+     * option is a list of
      * application failures for which retries should not be performed.
      *
-     * <p>By default the maximum number of retry attempts is set to "unlimited" however you can
+     * <p>
+     * By default the maximum number of retry attempts is set to "unlimited" however
+     * you can
      * change it by adding the "setMaximumAttempts" option to the retry options.
      */
-    private final GreetingActivities activities =
-        Workflow.newActivityStub(
-            GreetingActivities.class,
-            ActivityOptions.newBuilder()
-                .setStartToCloseTimeout(Duration.ofSeconds(10))
-                .setRetryOptions(
-                    RetryOptions.newBuilder()
-                        .setInitialInterval(Duration.ofSeconds(1))
-                        .setDoNotRetry(IllegalArgumentException.class.getName())
-                        .build())
-                .build());
+    private final GreetingActivities activities = Workflow.newActivityStub(
+        GreetingActivities.class,
+        ActivityOptions.newBuilder()
+            .setStartToCloseTimeout(Duration.ofSeconds(10))
+            .setRetryOptions(
+                RetryOptions.newBuilder()
+                    .setInitialInterval(Duration.ofSeconds(1))
+                    .setDoNotRetry(IllegalArgumentException.class.getName())
+                    .build())
+            .build());
 
     @Override
     public String getGreeting(String name) {
@@ -116,7 +136,8 @@ public class HelloActivityRetry {
   }
 
   /**
-   * Implementation of our workflow activity interface. It overwrites our defined composeGreeting
+   * Implementation of our workflow activity interface. It overwrites our defined
+   * composeGreeting
    * activity method.
    */
   static class GreetingActivitiesImpl implements GreetingActivities {
@@ -124,7 +145,8 @@ public class HelloActivityRetry {
     private long lastInvocationTime;
 
     /**
-     * Our activity implementation simulates a failure 3 times. Given our previously set
+     * Our activity implementation simulates a failure 3 times. Given our previously
+     * set
      * RetryOptions, our workflow is going to retry our activity execution.
      */
     @Override
@@ -138,7 +160,8 @@ public class HelloActivityRetry {
         System.out.println("composeGreeting activity is going to fail");
 
         /*
-         * We throw IllegalStateException here. It is not in the list of "do not retry" exceptions
+         * We throw IllegalStateException here. It is not in the list of "do not retry"
+         * exceptions
          * set in our RetryOptions, so a workflow retry is going to be issued
          */
         throw new IllegalStateException("not yet");
@@ -151,19 +174,24 @@ public class HelloActivityRetry {
   }
 
   /**
-   * With our Workflow and Activities defined, we can now start execution. The main method starts
+   * With our Workflow and Activities defined, we can now start execution. The
+   * main method starts
    * the worker and then the workflow.
    */
   public static void main(String[] args) {
 
+    String namespace = AppConfig.TEMPORAL_NAMESPACE;
+
     /* Temporal client connection */
     WorkflowServiceStubs service = WorkflowServiceStubs.newLocalServiceStubs();
-    WorkflowClient client = WorkflowClient.newInstance(service);
+    WorkflowClient client = WorkflowClient.newInstance(service,
+        WorkflowClientOptions.newBuilder()
+            .setNamespace(namespace)
+            .build());
     WorkerFactory factory = WorkerFactory.newInstance(client);
 
     /* Temporal Task Queue */
     Worker worker = factory.newWorker(AppConfig.TASK_QUEUE);
-
 
     /*
      * Register our workflow implementation with the worker.
@@ -173,7 +201,8 @@ public class HelloActivityRetry {
     worker.registerWorkflowImplementationTypes(GreetingWorkflowImpl.class);
 
     /*
-     * Register our Activity Types with the Worker. Since Activities are stateless and thread-safe,
+     * Register our Activity Types with the Worker. Since Activities are stateless
+     * and thread-safe,
      * the Activity Type is a shared instance.
      */
     worker.registerActivitiesImplementations(new GreetingActivitiesImpl());
@@ -184,19 +213,18 @@ public class HelloActivityRetry {
      */
     factory.start();
 
-
     // Set our workflow options
-    WorkflowOptions workflowOptions =
-        WorkflowOptions.newBuilder()
-          .setWorkflowId(WORKFLOW_ID)
-          .setTaskQueue(AppConfig.TASK_QUEUE)
-          .build();
+    WorkflowOptions workflowOptions = WorkflowOptions.newBuilder()
+        .setWorkflowId(WORKFLOW_ID)
+        .setTaskQueue(AppConfig.TASK_QUEUE)
+        .build();
 
     // Create the workflow client stub. It is used to start our workflow execution.
     GreetingWorkflow workflow = client.newWorkflowStub(GreetingWorkflow.class, workflowOptions);
 
     /*
-     * Execute our workflow and wait for it to complete. The call to our getGreeting method is
+     * Execute our workflow and wait for it to complete. The call to our getGreeting
+     * method is
      * synchronous.
      *
      * See {@link hellosamples.HelloSignal} for an example of starting workflow

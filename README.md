@@ -8,6 +8,12 @@ Sample direnv .envrc file provided with classpath using target in maven pom.xml
 ```
 export CLASSPATH="./target/dependency/*:./target/hellosamples-1.0.jar"
 ```
+Set namespace and task queue envs used in samples
+```
+export TEMPORAL_NAMESPACE="default"
+export TASK_QUEUE="Hello"
+```
+
 
 ## Build
 Might need to tweak for java versions etc or use ide :)

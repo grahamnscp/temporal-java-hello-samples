@@ -22,6 +22,7 @@ package hellosamples;
 import io.temporal.activity.ActivityInterface;
 import io.temporal.activity.ActivityOptions;
 import io.temporal.client.WorkflowClient;
+import io.temporal.client.WorkflowClientOptions;
 import io.temporal.client.WorkflowOptions;
 import io.temporal.serviceclient.WorkflowServiceStubs;
 import io.temporal.worker.Worker;
@@ -38,13 +39,20 @@ import java.util.UUID;
 /**
  * Sample Temporal workflow that shows use of workflow SideEffect.
  *
- * <p>Workflow methods must be deterministic. In order to execute non-deterministic code, such as
- * random number generation as shown in this example, you should use Workflow.SideEffect.
- * Workflow.SideEffect is typically used for very quick-running operations, where as Workflow
- * Activities or Local Activities, which can also execute non-deterministic code, are meant for more
+ * <p>
+ * Workflow methods must be deterministic. In order to execute non-deterministic
+ * code, such as
+ * random number generation as shown in this example, you should use
+ * Workflow.SideEffect.
+ * Workflow.SideEffect is typically used for very quick-running operations,
+ * where as Workflow
+ * Activities or Local Activities, which can also execute non-deterministic
+ * code, are meant for more
  * expensive operations.
  *
- * <p>Note: you should not use SideEffect function to modify the workflow state. For that you should
+ * <p>
+ * Note: you should not use SideEffect function to modify the workflow state.
+ * For that you should
  * only use the SideEffect's return value!
  */
 public class HelloSideEffect {
@@ -53,10 +61,14 @@ public class HelloSideEffect {
   static final String WORKFLOW_ID = "HelloSideEffectTaskWorkflow";
 
   /**
-   * The Workflow Definition's Interface must contain one method annotated with @WorkflowMethod.
+   * The Workflow Definition's Interface must contain one method annotated
+   * with @WorkflowMethod.
    *
-   * <p>Workflow code includes core processing logic. It shouldn't contain any heavyweight
-   * computations, non-deterministic code, network calls, database operations, etc. All those things
+   * <p>
+   * Workflow code includes core processing logic. It shouldn't contain any
+   * heavyweight
+   * computations, non-deterministic code, network calls, database operations,
+   * etc. All those things
    * should be handled by Activities.
    *
    * @see io.temporal.workflow.WorkflowInterface
@@ -66,7 +78,8 @@ public class HelloSideEffect {
   public interface SideEffectWorkflow {
 
     /**
-     * This is the method that is executed when the Workflow Execution is started. The Workflow
+     * This is the method that is executed when the Workflow Execution is started.
+     * The Workflow
      * Execution completes when this method finishes execution.
      */
     @WorkflowMethod
@@ -77,11 +90,14 @@ public class HelloSideEffect {
   }
 
   /**
-   * This is the Activity Definition's Interface. Activities are building blocks of any Temporal
-   * Workflow and contain any business logic that could perform long running computation, network
+   * This is the Activity Definition's Interface. Activities are building blocks
+   * of any Temporal
+   * Workflow and contain any business logic that could perform long running
+   * computation, network
    * calls, etc.
    *
-   * <p>Annotating Activity Definition methods with @ActivityMethod is optional.
+   * <p>
+   * Annotating Activity Definition methods with @ActivityMethod is optional.
    *
    * @see io.temporal.activity.ActivityInterface
    * @see io.temporal.activity.ActivityMethod
@@ -95,22 +111,28 @@ public class HelloSideEffect {
     String sayGoodBye(String greeting);
   }
 
-  // Define the workflow implementation which implements our execute workflow method.
+  // Define the workflow implementation which implements our execute workflow
+  // method.
   public static class SideEffectWorkflowImpl implements SideEffectWorkflow {
 
     /**
-     * Define the SideEffectActivities stub. Activity stubs are proxies for activity invocations
-     * that are executed outside of the workflow thread on the activity worker, that can be on a
-     * different host. Temporal is going to dispatch the activity results back to the workflow and
+     * Define the SideEffectActivities stub. Activity stubs are proxies for activity
+     * invocations
+     * that are executed outside of the workflow thread on the activity worker, that
+     * can be on a
+     * different host. Temporal is going to dispatch the activity results back to
+     * the workflow and
      * unblock the stub as soon as activity is completed on the activity worker.
      *
-     * <p>In the {@link ActivityOptions} definition the "setStartToCloseTimeout" option sets maximum
-     * time of a single Activity execution attempt. For this example it is set to 2 seconds.
+     * <p>
+     * In the {@link ActivityOptions} definition the "setStartToCloseTimeout" option
+     * sets maximum
+     * time of a single Activity execution attempt. For this example it is set to 2
+     * seconds.
      */
-    private final SideEffectActivities activities =
-        Workflow.newActivityStub(
-            SideEffectActivities.class,
-            ActivityOptions.newBuilder().setStartToCloseTimeout(Duration.ofSeconds(2)).build());
+    private final SideEffectActivities activities = Workflow.newActivityStub(
+        SideEffectActivities.class,
+        ActivityOptions.newBuilder().setStartToCloseTimeout(Duration.ofSeconds(2)).build());
 
     int randomInt, sideEffectsRandomInt;
     UUID randomUUID;
@@ -126,21 +148,24 @@ public class HelloSideEffect {
       randomUUID = Workflow.randomUUID();
 
       /*
-       * Random number using side effects. Note that this value is recorded in workflow history. On
+       * Random number using side effects. Note that this value is recorded in
+       * workflow history. On
        * replay the same value is returned so determinism is guaranteed.
        */
-      sideEffectsRandomInt =
-          Workflow.sideEffect(
-              int.class,
-              () -> {
-                Random random = new SecureRandom();
-                return random.nextInt();
-              });
+      sideEffectsRandomInt = Workflow.sideEffect(
+          int.class,
+          () -> {
+            Random random = new SecureRandom();
+            return random.nextInt();
+          });
 
       /*
-       * Since our randoms are all created safely (using SideEffects or Workflow deterministic
-       * methods) the workflow result should be same as the queries ran after workflow completion.
-       * In the case we did not use safe methods, the queries could have a different result.
+       * Since our randoms are all created safely (using SideEffects or Workflow
+       * deterministic
+       * methods) the workflow result should be same as the queries ran after workflow
+       * completion.
+       * In the case we did not use safe methods, the queries could have a different
+       * result.
        */
       if ((randomUUID.version() + randomInt + sideEffectsRandomInt) % 2 == 0) {
         result = activities.sayHello("World");
@@ -170,49 +195,56 @@ public class HelloSideEffect {
   }
 
   /**
-   * With our Workflow and Activities defined, we can now start execution. 
+   * With our Workflow and Activities defined, we can now start execution.
    * The main method starts the worker and then the workflow.
    */
   public static void main(String[] args) {
 
+    String namespace = AppConfig.TEMPORAL_NAMESPACE;
+
     /* Temporal client connection */
     WorkflowServiceStubs service = WorkflowServiceStubs.newLocalServiceStubs();
-    WorkflowClient client = WorkflowClient.newInstance(service);
+    WorkflowClient client = WorkflowClient.newInstance(service,
+        WorkflowClientOptions.newBuilder()
+            .setNamespace(namespace)
+            .build());
     WorkerFactory factory = WorkerFactory.newInstance(client);
 
     /* Temporal Task Queue */
     Worker worker = factory.newWorker(AppConfig.TASK_QUEUE);
 
     /*
-     * Register our workflow implementation with the worker. Workflow implementations must be known
+     * Register our workflow implementation with the worker. Workflow
+     * implementations must be known
      * to the worker at runtime in order to dispatch workflow tasks.
      */
     worker.registerWorkflowImplementationTypes(SideEffectWorkflowImpl.class);
 
     /*
-     * Register our Activity Types with the Worker. Since Activities are stateless and thread-safe,
+     * Register our Activity Types with the Worker. Since Activities are stateless
+     * and thread-safe,
      * the Activity Type is a shared instance.
      */
     worker.registerActivitiesImplementations(new SideEffectActivitiesImpl());
 
     /*
-     * Start all the workers registered for a specific task queue. The started workers then start
+     * Start all the workers registered for a specific task queue. The started
+     * workers then start
      * polling for workflows and activities.
      */
     factory.start();
 
-
     // Create the workflow client stub. It is used to start our workflow execution.
-    SideEffectWorkflow workflow =
-        client.newWorkflowStub(
-            SideEffectWorkflow.class,
-            WorkflowOptions.newBuilder()
-                .setWorkflowId(WORKFLOW_ID)
-                .setTaskQueue(AppConfig.TASK_QUEUE)
-                .build());
+    SideEffectWorkflow workflow = client.newWorkflowStub(
+        SideEffectWorkflow.class,
+        WorkflowOptions.newBuilder()
+            .setWorkflowId(WORKFLOW_ID)
+            .setTaskQueue(AppConfig.TASK_QUEUE)
+            .build());
 
     /*
-     * Execute our workflow and wait for it to complete. The call to our start method is
+     * Execute our workflow and wait for it to complete. The call to our start
+     * method is
      * synchronous.
      *
      * <p>See {@link hellosamples.HelloSignal} for an example of starting workflow
